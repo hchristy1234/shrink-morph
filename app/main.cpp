@@ -315,7 +315,7 @@ int main(int argc, char* argv[])
         optimTimer.start();
         optimRun = true;
         // Define simulation function
-        auto func = simulationFunction(geometry, MrInv, theta1, theta2, E1, lambda1, lambda2, deltaLambda, thickness);
+        auto func = simulationFunction(mesh, MrInv, theta1, theta2, E1, lambda1, lambda2, deltaLambda, thickness);
 
         // (Projected) Newton optimization
         newton(geometry, V, func, nIter, lim, true, fixedIdx, [&](const Eigen::VectorXd& X) {

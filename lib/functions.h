@@ -5,7 +5,7 @@
 #include <geometrycentral/surface/intrinsic_geometry_interface.h>
 
 TinyAD::ScalarFunction<3, double, geometrycentral::surface::VertexRangeF::Etype>
-simulationFunction(geometrycentral::surface::IntrinsicGeometryInterface& geometry,
+simulationFunction(geometrycentral::surface::SurfaceMesh& mesh,
                    const geometrycentral::surface::FaceData<Eigen::Matrix2d>& MrInv,
                    const geometrycentral::surface::FaceData<double>& theta1,
                    const geometrycentral::surface::VertexData<double>& theta2,

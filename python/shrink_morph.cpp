@@ -113,7 +113,6 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
 
   // create geometry-central objects
   ManifoldSurfaceMesh mesh(F);
-  VertexPositionGeometry geometry(mesh, V);
 
   // Find face closest to mesh center and fix its vertices
   std::vector<int> fixedIdx = findCenterFaceIndices(P, F);
@@ -123,14 +122,11 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
   VertexData<double> _theta2(mesh, theta2);
 
   // Define simulation function
-  auto func = simulationFunction(geometry, MrInv, theta1, _theta2, E1, lambda1, lambda2, deltaLambda, thickness);
+  auto func = simulationFunction(mesh, MrInv, theta1, _theta2, E1, lambda1, lambda2, deltaLambda, thickness);
 
-  // ---------------- (Projected) Newton optimization ----------------
-  // Assemble inital x vector
-  geometry.requireVertexIndices();
-  Eigen::VectorXd x = func.x_from_data([&, V](Vertex v) { return V.row(geometry.vertexIndices[v]); });
-
+  // ---------------- (Projected) Newton optimization ----------------  
   LLTSolver solver;
+  Eigen::VectorXd x = V.reshaped<Eigen::RowMajor>();
 
   // Newton algorithm
   newton(x, func, solver, n_iter, lim, true, fixedIdx);

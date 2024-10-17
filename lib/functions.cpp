@@ -6,7 +6,7 @@
 
 using namespace geometrycentral::surface;
 
-TinyAD::ScalarFunction<3, double, Vertex> simulationFunction(IntrinsicGeometryInterface& geometry,
+TinyAD::ScalarFunction<3, double, Vertex> simulationFunction(SurfaceMesh& mesh,
                                                              const FaceData<Eigen::Matrix2d>& MrInv,
                                                              const FaceData<double>& theta1,
                                                              const VertexData<double>& theta2,
@@ -17,8 +17,6 @@ TinyAD::ScalarFunction<3, double, Vertex> simulationFunction(IntrinsicGeometryIn
                                                              double thickness,
                                                              double E2)
 {
-  SurfaceMesh& mesh = geometry.mesh;
-
   // Set up function with 3D vertex positions as variables.
   TinyAD::ScalarFunction<3, double, Vertex> func = TinyAD::scalar_function<3>(mesh.vertices());
 
