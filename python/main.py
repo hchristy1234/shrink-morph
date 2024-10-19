@@ -195,7 +195,8 @@ class ShrinkMorph:
   def optim_screen(self):
     self.leave = True
     ps.remove_all_structures()
-    ps.register_surface_mesh("Input mesh", self.V, self.F)
+    ps_input = ps.register_surface_mesh("Input mesh", self.V, self.F)
+    ps_input.set_transparency(0.5)
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
@@ -206,8 +207,8 @@ class ShrinkMorph:
 
   resolutions = ["Low", "Medium", "High"]
   resolution = resolutions[0]
+
   def callback_optim(self):
-      
     gui.PushItemWidth(100)
     changed, self.width = gui.InputFloat("Width", self.width, 0, 0, "%.0f")
     if changed and self.width > 0:
@@ -219,13 +220,11 @@ class ShrinkMorph:
 
     if gui.Button("Simulation"):
       shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width, self.n_iter, self.lim)
-      ps.get_surface_mesh("Input mesh").set_transparency(0.5)
       ps.register_surface_mesh("Simulation", self.V, self.F)
 
     if gui.Button("Directions optimization"):
       self.theta2 = shrink_morph_py.directions_optimization(self.V, self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width,
                                           self.n_iter, self.lim, self.wM, self.wL)
-      ps.get_surface_mesh("Input mesh").set_transparency(0.5)
       if ps.has_surface_mesh("Simulation"):
         ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
       else:
@@ -256,72 +255,51 @@ class ShrinkMorph:
     self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2, target_edge_length)
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
-    self.trajectories = []
-    self.trajectories = self.trajectories + self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
-    # self.trajectories = shrink_morph_py.generate_trajectories(self.P, self.F, theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers)
-    ps.remove_all_structures();
+    trajectories = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
+    nodes, edges = self.convert_trajectories(trajectories)
+    self.layer_nodes = [nodes]
+    self.layer_edges = [edges]
+    ps.remove_all_structures()
+    self.display_trajectories(self.layer_nodes, self.layer_edges)
   
-    self.display_trajectories()
-    self.display_buildplate()
-
     ps.set_user_callback(self.callback_traj)
     ps.reset_camera_to_home_view()
     ps.show()    
 
-  def display_trajectories(self):
-    nodes = self.trajectories[0]
+  def convert_trajectories(self, trajectories):
+    nodes = trajectories[0]
     edges = np.empty([nodes.shape[0] - 1, 2])
     edges[:, 0] = np.arange(nodes.shape[0] - 1)
     edges[:, 1] = np.arange(1, nodes.shape[0])
-    # colors = np.zeros(nodes.shape[0])
-    path_id = 1
-    self.layer_nodes = []
-    self.layer_edges = []
 
-    h = nodes[0,2]
-    k = 1
-    for traj in self.trajectories:
-      if traj[0, 2] > h:
-        ps_traj = ps.register_curve_network("Layer " + str(k), nodes, edges, enabled=False)
-        self.layer_nodes.append(nodes)
-        self.layer_edges.append(edges)
-        ps_traj.set_radius(self.printer.nozzle_width / 2, relative=False)
-        # ps_traj.add_scalar_quantity("Ordering", colors, enabled=True, cmap="blues")
-        nodes = traj
-        edges = np.empty([nodes.shape[0] - 1, 2])
-        edges[:, 0] = np.arange(nodes.shape[0] - 1)
-        edges[:, 1] = np.arange(1, nodes.shape[0])
-        # colors = np.zeros(nodes.shape[0])
-
-        h = nodes[0,2]
-        path_id = 1
-        k += 1
-
+    for traj in trajectories:
       new_edges = np.empty([traj.shape[0] - 1, 2])
       new_edges[:, 0] = np.arange(nodes.shape[0], nodes.shape[0] + traj.shape[0] - 1)
       new_edges[:, 1] = np.arange(nodes.shape[0] + 1, nodes.shape[0] + traj.shape[0])
       
       nodes = np.vstack((nodes, traj))
       edges = np.vstack((edges, new_edges))
-      # colors = np.hstack((colors, path_id * np.ones(traj.shape[0])))
-      path_id += 1
 
-    self.layer_nodes.append(nodes)
-    self.layer_edges.append(edges)
-    ps_traj = ps.register_curve_network("Layer " + str(k), nodes, edges, enabled=True, radius=self.printer.nozzle_width / 2)
-    # ps_traj.add_scalar_quantity("Ordering", colors, enabled=True, cmap="blues")
-    ps_traj.set_radius(self.printer.nozzle_width / 2, relative=False)
+    return nodes, edges  
 
+  def display_trajectories(self, nodes, edges):
+    self.display_buildplate()
+    for k in range(len(nodes)):
+      ps_traj = ps.register_curve_network("Layer " + str(k + 1), nodes[k], edges[k], enabled=True, radius=self.printer.nozzle_width / 2)
+      ps_traj.set_radius(self.printer.nozzle_width / 2, relative=False)
+      ps_traj.set_color((0.3, 0.6, 0.8))
 
   layer_id = 1
   progress = 1
   curr_layer = 1
   def callback_traj(self):
-    # global self.layer_id, self.V, self.P, self.F, self.theta2, self.printer_profile, self.trajectories, self.printer
     if self.curr_layer < self.n_layers:
-      self.trajectories = self.trajectories + self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
+      trajectories = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
+      nodes, edges = self.convert_trajectories(trajectories)
+      self.layer_nodes.append(nodes)
+      self.layer_edges.append(edges)
+      self.display_trajectories(self.layer_nodes, self.layer_edges)
       self.curr_layer = self.curr_layer + 1
-      self.display_trajectories()
 
     gui.PushItemWidth(200)
     changed = gui.BeginCombo("Select self.printer", self.printer_profile)
@@ -335,12 +313,6 @@ class ShrinkMorph:
       gui.EndCombo()
     gui.PopItemWidth()
 
-    if gui.Button("Increase mesh resolution and reload trajectories"):
-      self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2)
-      ps.remove_all_structures();
-      self.trajectories = shrink_morph_py.generate_trajectories(self.V, self.P, self.F, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers)
-      self.display_trajectories()
-      self.display_buildplate()
 
     gui.PushItemWidth(200)
     changed, self.layer_id = gui.SliderInt("Layer", self.layer_id, 1, self.curr_layer)
@@ -355,6 +327,14 @@ class ShrinkMorph:
     if changed:
       d = int(np.max(self.layer_edges[self.layer_id - 1][:self.progress, :])) + 1
       ps.register_curve_network("Layer " + str(self.layer_id), self.layer_nodes[self.layer_id - 1][:d, :], self.layer_edges[self.layer_id - 1][:self.progress, :])
+    if gui.Button("Increase mesh resolution and reload trajectories"):
+      self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2)
+      self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
+      self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
+      self.layer_nodes = []
+      self.layer_edges = []
+      self.curr_layer = 0
+      ps.remove_all_structures()
     if gui.Button("Export to g-code"):
       filename = filedialog.asksaveasfilename(defaultextension='.gcode')
       self.printer.to_gcode(self.trajectories, filename)
