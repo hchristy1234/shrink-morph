@@ -200,6 +200,7 @@ class ShrinkMorph:
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
+    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness)
 
     ps.set_user_callback(self.callback_optim)
     ps.reset_camera_to_home_view()
@@ -207,6 +208,8 @@ class ShrinkMorph:
 
   resolutions = ["Low", "Medium", "High"]
   resolution = resolutions[0]
+
+  optim_running = False
 
   def callback_optim(self):
     gui.PushItemWidth(100)
@@ -218,19 +221,28 @@ class ShrinkMorph:
       self.targetV *= scale
       ps.get_surface_mesh("Input mesh").update_vertex_positions(self.targetV)
 
-    if gui.Button("Simulation"):
-      shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width, self.n_iter, self.lim)
-      ps.register_surface_mesh("Simulation", self.V, self.F)
+    # if gui.Button("Simulation"):
+    #   shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width, self.n_iter, self.lim)
+    #   ps.get_surface_mesh("Input mesh").set_transparency(0.5)
+    #   ps.register_surface_mesh("Simulation", self.V, self.F)
+
+    if self.optim_running == True:
+      _, self.theta2 = self.optim_solver.solve_one_step()
+      ps.get_surface_mesh("Optimized mesh").update_vertex_positions(self.optim_solver.optimizedV())
+
+      if self.optim_solver.decrement() < 1e-6:
+        self.optim_running = False
+        ps.get_surface_mesh("Optimized mesh").add_scalar_quantity("theta2", self.theta2)
+        ps.get_surface_mesh("Optimized mesh").add_scalar_quantity("theta1", self.angles, defined_on='faces', vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
 
     if gui.Button("Directions optimization"):
-      self.theta2 = shrink_morph_py.directions_optimization(self.V, self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width,
-                                          self.n_iter, self.lim, self.wM, self.wL)
-      if ps.has_surface_mesh("Simulation"):
-        ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
-      else:
-        ps.register_surface_mesh("Simulation", self.V, self.F)
-      ps.get_surface_mesh("Simulation").add_scalar_quantity("theta2", self.theta2)
-      ps.get_surface_mesh("Simulation").add_scalar_quantity("theta1", self.angles, defined_on='faces', vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+      ps.get_surface_mesh("Input mesh").set_transparency(0.5)
+      # if ps.has_surface_mesh("Simulation"):
+      #   ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
+      # else:
+      _, self.theta2 = self.optim_solver.solve_one_step()
+      ps.register_surface_mesh("Optimized mesh", self.optim_solver.optimizedV(), self.F)
+      self.optim_running = True
 
     changed = gui.BeginCombo("Trajectory resolution", self.resolution)
     if changed:

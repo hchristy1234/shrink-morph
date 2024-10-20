@@ -6,6 +6,7 @@
 #include "stretch_angles.h"
 #include "stripe_patterns.h"
 #include "timer.h"
+#include "SGNSolver.h"
 
 #include <Eigen/Dense>
 #include <igl/loop.h>
@@ -124,7 +125,7 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
   // Define simulation function
   auto func = simulationFunction(mesh, MrInv, theta1, _theta2, E1, lambda1, lambda2, deltaLambda, thickness);
 
-  // ---------------- (Projected) Newton optimization ----------------  
+  // ---------------- (Projected) Newton optimization ----------------
   LLTSolver solver;
   Eigen::VectorXd x = V.reshaped<Eigen::RowMajor>();
 
@@ -240,13 +241,13 @@ struct StripeAlgo
   }
 
   std::vector<Eigen::MatrixXd> generateTrajectory(const nb::DRef<Eigen::MatrixXd>& P,
-                                    const nb::DRef<Eigen::MatrixXi>& F,
-                                    const nb::DRef<Eigen::VectorXd>& theta1,
-                                    const nb::DRef<Eigen::VectorXd>& theta2,
-                                    double layerHeight,
-                                    double spacing,
-                                    int nLayers,
-                                    int i)
+                                                  const nb::DRef<Eigen::MatrixXi>& F,
+                                                  const nb::DRef<Eigen::VectorXd>& theta1,
+                                                  const nb::DRef<Eigen::VectorXd>& theta2,
+                                                  double layerHeight,
+                                                  double spacing,
+                                                  int nLayers,
+                                                  int i)
   {
     using namespace geometrycentral;
     using namespace geometrycentral::surface;
@@ -273,7 +274,6 @@ struct StripeAlgo
     return dataArray;
   }
 };
-
 
 Eigen::VectorXd vertexBasedStretchAngles(const nb::DRef<Eigen::MatrixXd>& V,
                                          const nb::DRef<Eigen::MatrixXd>& P,
@@ -330,4 +330,11 @@ NB_MODULE(shrink_morph_py, m)
   nb::class_<StripeAlgo>(m, "StripeAlgo")
       .def(nb::init<const nb::DRef<Eigen::MatrixXd>&, const nb::DRef<Eigen::MatrixXi>&>())
       .def("generate_one_layer", &StripeAlgo::generateTrajectory);
+
+  nb::class_<SGNSolver>(m, "SGNSolver")
+      .def(nb::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&, const Eigen::MatrixXi&,
+                    double, double, double, double, double>())
+      .def("newton_decrement", &SGNSolver::newton_decrement)
+      .def("solve_one_step", &SGNSolver::solveOneStep)
+      .def("optimizedV", &SGNSolver::vertices);
 }
