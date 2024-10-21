@@ -336,5 +336,7 @@ NB_MODULE(shrink_morph_py, m)
                     double, double, double, double, double>())
       .def("newton_decrement", &SGNSolver::newton_decrement)
       .def("solve_one_step", &SGNSolver::solveOneStep)
-      .def("optimizedV", &SGNSolver::vertices);
+      .def("optimizedV", &SGNSolver::vertices)
+      .def("distance", &SGNSolver::distance)
+      .def("decrement", &SGNSolver::newton_decrement);
 }

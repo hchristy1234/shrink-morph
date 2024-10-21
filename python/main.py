@@ -240,7 +240,7 @@ class ShrinkMorph:
       # if ps.has_surface_mesh("Simulation"):
       #   ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
       # else:
-      _, self.theta2 = self.optim_solver.solve_one_step()
+      print("Initial distance", self.optim_solver.distance(self.theta2))
       ps.register_surface_mesh("Optimized mesh", self.optim_solver.optimizedV(), self.F)
       self.optim_running = True
 

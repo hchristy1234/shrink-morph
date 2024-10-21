@@ -23,7 +23,7 @@ public:
   std::tuple<Eigen::VectorXd, Eigen::VectorXd> solveOneStep();
 
   double newton_decrement() { return decrement; }
-  Eigen::MatrixXd vertices() { return x.reshaped<Eigen::RowMajor>(); }
+  Eigen::MatrixXd vertices() { return x.reshaped<Eigen::RowMajor>(x.size() / 3, 3); }
   Eigen::VectorXd thetas() { return theta; }
 
 private:
