@@ -71,7 +71,8 @@ add_library(shrink_morph
   ${SHRINK_MORPH_LIBRARY}/path_extraction.cpp
   ${SHRINK_MORPH_LIBRARY}/stripe_patterns.cpp
   ${SHRINK_MORPH_LIBRARY}/stretch_angles.cpp
-  ${SHRINK_MORPH_LIBRARY}/simulation_utils.cpp)
+  ${SHRINK_MORPH_LIBRARY}/simulation_utils.cpp
+  ${SHRINK_MORPH_LIBRARY}/SGNSolver.cpp)
 
 target_link_libraries(shrink_morph PUBLIC Eigen3::Eigen geometry-central TinyAD igl::core)
 target_include_directories(shrink_morph PUBLIC ${SHRINK_MORPH_LIBRARY})
