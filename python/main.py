@@ -8,8 +8,8 @@ from tkinter import filedialog
 
 root = tk.Tk()
 root.withdraw()
-filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
-V, F = shrink_morph_py.read_from_OBJ(filename)
+# filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
+# V, F = shrink_morph_py.read_from_OBJ(filename)
 
 class ShrinkMorph:
   lambda1 = 0.58
@@ -69,6 +69,7 @@ class ShrinkMorph:
 
   # GUI variables
   leave = True
+  calibrate = False
 
   # Display printer buildplate
   def display_buildplate(self):
@@ -80,17 +81,19 @@ class ShrinkMorph:
     ps.register_surface_mesh("Buildplate", build_vert, build_face, color=(0.95, 0.95, 0.95), edge_width=5, edge_color=(0.5, 0.5, 0.5), material="flat")
 
   def param_screen(self):
-    self.P = shrink_morph_py.parameterization(self.V, F, self.lambda1, self.lambda2, 0, self.n_iter, self.lim)
-    scale = self.width / (np.max(self.P) - np.min(self.P))
-    self.P *= scale
-    self.V *= scale
+    print("in param screen")
 
-    ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+    # self.P = shrink_morph_py.parameterization(self.V, F, self.lambda1, self.lambda2, 0, self.n_iter, self.lim)
+    # scale = self.width / (np.max(self.P) - np.min(self.P))
+    # self.P *= scale
+    # self.V *= scale
 
-    sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
-    ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
-    ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
-    ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+    # ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+
+    # sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
     self.display_buildplate()
 
@@ -100,6 +103,24 @@ class ShrinkMorph:
   def callback_param(self):
     # global lambda1, lambda2, wD, E1, thickness, deltaLambda, n_layers, lim, n_iter, width, P, self.V, self.F, printer_profile, with_smoothing
     gui.PushItemWidth(200)
+
+    if gui.Button("Select File"):
+      filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
+      self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
+
+      self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, 0, self.n_iter, self.lim)
+      scale = self.width / (np.max(self.P) - np.min(self.P))
+      self.P *= scale
+      self.V *= scale
+
+      ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+
+      sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+
+
     changed = gui.BeginCombo("Select printer", self.printer_profile)
     if changed:
       for val in self.printers_list:
@@ -153,21 +174,12 @@ class ShrinkMorph:
       self.leave = False
       ps.unshow()
 
-    _, self.num_rectangles = gui.InputInt("Number of Rectangles", self.num_rectangles)
-    _, self.num_layers = gui.InputInt("Number of Layers", self.num_layers)
-    _, self.layer_height = gui.InputFloat("Layer Height", self.layer_height, 0, 0, "%.2f")
-    _, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, 0, 0, "%.0f")
-    _, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, 0, 0, "%.0f")
-    _, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, 0, 0, "%.0f")
-    _, self.printer.ncols = gui.InputInt("Repeat n columns", self.printer.ncols)
-    _, self.printer.nrows = gui.InputInt("Repeat n rows", self.printer.nrows)
-    _, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
-    _, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+    if gui.Button("Calibrate"):
+      self.leave = False
+      self.calibrate = True
+      ps.unshow()
 
-    if gui.Button("Generate Calibration G-code"):
-      self.generate_calibration(self.num_rectangles, self.num_layers, self.layer_height, self.rect_length, self.rect_width)
-
-  def show(self, V, F):
+  def show(self):
     ps.set_give_focus_on_show(True)
     ps.init()
     ps.set_up_dir("neg_y_up")
@@ -175,12 +187,17 @@ class ShrinkMorph:
     ps.load_color_map("twilight", "data/twilight_colormap.png");
     ps.set_ground_plane_mode("shadow_only")
 
-    self.V = V
-    self.F = F
+    # self.V = V
+    # self.F = F
 
     self.param_screen()
 
     if self.leave:
+      return
+    
+    if self.calibrate:
+      print("calibrate")
+      self.calibrate_screen()
       return
 
     self.optim_screen()
@@ -276,7 +293,91 @@ class ShrinkMorph:
   
     ps.set_user_callback(self.callback_traj)
     ps.reset_camera_to_home_view()
-    ps.show()    
+    ps.show()
+  
+  def calibrate_screen(self):
+    self.leave = True
+    ps.remove_all_structures()
+
+    self.display_buildplate()
+    x_start = -0.8
+    step_size = 1.6/float(self.num_rectangles) - 0.05
+    build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
+    build_face = np.empty(shape=(int(self.num_rectangles), 4))
+    y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
+    y_top = step_size * (self.rect_length / self.rect_width) / 2
+    for i in range(int(self.num_rectangles)):
+      build_vert[i*4] = [x_start, y_bottom, 0.1]
+      build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
+      build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
+      build_vert[i*4+3] =  [x_start, y_top, 0.1]
+      build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
+      x_start += step_size + 0.05
+    build_vert[:, 0] *= self.printer.bed_size[0] / 2
+    build_vert[:, 1] *= self.printer.bed_size[1] / 2
+    ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+
+    ps.set_user_callback(self.callback_calibrate)
+    ps.reset_camera_to_home_view()
+    ps.show()
+  
+  def callback_calibrate(self):
+    gui.PushItemWidth(200)
+    #self.display_buildplate()
+
+    changed_1, self.num_rectangles = gui.DragFloat("Number of Rectangles", self.num_rectangles, 1, 1, 10, "%.0f")
+    changed_2, self.num_layers = gui.DragFloat("Number of Layers", self.num_layers, 1, 1, 20, "%.0f")
+    changed_3, self.layer_height = gui.DragFloat("Layer Height", self.layer_height, 0.01, 0, 50, "%.2f")
+    changed_4, self.printer.bed_temp = gui.DragFloat("Bed temperature", self.printer.bed_temp, 1, 20, 60, "%.0f")
+    changed_5, self.printer.extruder_temp = gui.DragFloat("Nozzle temperature", self.printer.extruder_temp, 1, 180, 230, "%.0f")
+    changed_6, self.printer.print_speed = gui.DragFloat("Printing speed (mm/s)", self.printer.print_speed, 1, 10, 100, "%.0f")
+    changed_7, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
+    changed_8, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+
+    if changed_1 or changed_2 or changed_3 or changed_4 or changed_5 or changed_6 or changed_7 or changed_8:
+      x_start = -0.8
+      step_size = 1.6/float(self.num_rectangles) - 0.05
+      build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
+      build_face = np.empty(shape=(int(self.num_rectangles), 4))
+      y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
+      y_top = step_size * (self.rect_length / self.rect_width) / 2
+      for i in range(int(self.num_rectangles)):
+        build_vert[i*4] = [x_start, y_bottom, 0.1]
+        build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
+        build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
+        build_vert[i*4+3] =  [x_start, y_top, 0.1]
+        build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
+        x_start += step_size + 0.05
+      build_vert[:, 0] *= self.printer.bed_size[0] / 2
+      build_vert[:, 1] *= self.printer.bed_size[1] / 2
+
+      ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+
+
+    if gui.Button("Generate Calibration G-code"):
+      self.generate_calibration(self.num_rectangles, self.num_layers, self.layer_height, self.rect_length, self.rect_width)
+      x_start = -0.8
+      step_size = 1.6/float(self.num_rectangles) - 0.05
+      build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
+      build_face = np.empty(shape=(int(self.num_rectangles), 4))
+      y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
+      y_top = step_size * (self.rect_length / self.rect_width) / 2
+      for i in range(int(self.num_rectangles)):
+        build_vert[i*4] = [x_start, y_bottom, 0.1]
+        build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
+        build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
+        build_vert[i*4+3] =  [x_start, y_top, 0.1]
+        build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
+        x_start += step_size + 0.05
+      build_vert[:, 0] *= self.printer.bed_size[0] / 2
+      build_vert[:, 1] *= self.printer.bed_size[1] / 2
+
+      ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+
+    # if gui.Button("Back"):
+    #     self.calibrate = False
+    #     ps.unshow()
+    #     self.param_screen()
 
   def convert_trajectories(self, trajectories):
     nodes = trajectories[0]
@@ -406,4 +507,4 @@ class ShrinkMorph:
     self.printer.to_gcode(paths, "data/calibration.gcode")
 
 main = ShrinkMorph()
-main.show(V, F)
+main.show()
