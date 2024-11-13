@@ -480,30 +480,27 @@ class ShrinkMorph:
     shift_x = 0
 
     paths = []
-    with open("sample.path", "w") as file:
-        #layer_height = 0.08
-        for j in range(int(num_rectangles)):
-            nb_layers = 10-j
-            z = 0
-            for i in range(nb_layers):
-                z += layer_height + i / (nb_layers - 1) * 2 * (0.8 / nb_layers - 0.08)
-                y = -width/2 -j*jump_y + shift_y
-                x = -length/2 + shift_x
-                while(y < width/2 - j*jump_y + shift_y):
-                    path = []
-                    if x < 0 + shift_x:
-                        file.write("2\n")
-                        path.append([x, y, z])
-                        x = length/2 + shift_x
-                        path.append([x, y, z])
-                    else:
-                        file.write("2\n")
-                        path.append([x, y, z])
-                        x = -length/2 + shift_x
-                        path.append([x, y, z])
-                    y += 0.4
-                    paths.append(np.array(path))
-                print(f"{z:.4f}") # for debug purposes
+    #layer_height = 0.08
+    for j in range(int(num_rectangles)):
+        nb_layers = 10 - j
+        z = 0
+        for i in range(nb_layers):
+            z += layer_height + i / (nb_layers - 1) * 2 * (0.8 / nb_layers - 0.08)
+            y = -width / 2 -j * jump_y + shift_y
+            x = -length / 2 + shift_x
+            while(y < width / 2 - j * jump_y + shift_y):
+                path = []
+                if x < 0 + shift_x:
+                    path.append([x, y, z])
+                    x = length / 2 + shift_x
+                    path.append([x, y, z])
+                else:
+                    path.append([x, y, z])
+                    x = -length / 2 + shift_x
+                    path.append([x, y, z])
+                y += 0.4
+                paths.append(np.array(path))
+            print(f"{z:.4f}") # for debug purposes
     self.printer.to_gcode(paths, "data/calibration.gcode")
 
 main = ShrinkMorph()
