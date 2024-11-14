@@ -501,7 +501,9 @@ class ShrinkMorph:
                 y += 0.4
                 paths.append(np.array(path))
             print(f"{z:.4f}") # for debug purposes
-    self.printer.to_gcode(paths, "data/calibration.gcode")
+    save_directory = filedialog.askdirectory()
+    save_path = save_directory + "/calibration.gcode"
+    self.printer.to_gcode(paths, save_path)
 
 main = ShrinkMorph()
 main.show()
