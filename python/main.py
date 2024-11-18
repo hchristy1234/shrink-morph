@@ -5,11 +5,11 @@ import polyscope.imgui as gui
 import togcode
 import tkinter as tk
 from tkinter import filedialog
+import os
+import sys
 
 root = tk.Tk()
 root.withdraw()
-# filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
-# V, F = shrink_morph_py.read_from_OBJ(filename)
 
 class ShrinkMorph:
   lambda1 = 0.58
@@ -82,18 +82,6 @@ class ShrinkMorph:
 
   def param_screen(self):
     print("in param screen")
-
-    # self.P = shrink_morph_py.parameterization(self.V, F, self.lambda1, self.lambda2, 0, self.n_iter, self.lim)
-    # scale = self.width / (np.max(self.P) - np.min(self.P))
-    # self.P *= scale
-    # self.V *= scale
-
-    # ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
-
-    # sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
-    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
-    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
-    # ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
     self.display_buildplate()
 
@@ -178,13 +166,17 @@ class ShrinkMorph:
       self.leave = False
       self.calibrate = True
       ps.unshow()
-
+  
   def show(self):
     ps.set_give_focus_on_show(True)
     ps.init()
     ps.set_up_dir("neg_y_up")
 
-    ps.load_color_map("twilight", "data/twilight_colormap.png");
+    twilight_image = os.path.join(os.path.dirname(__file__), "twilight_colormap.png")
+    print(twilight_image)
+    ps.load_color_map("twilight", twilight_image)
+
+    #ps.load_color_map("twilight", "data/twilight_colormap.png")
     ps.set_ground_plane_mode("shadow_only")
 
     # self.V = V
@@ -300,12 +292,12 @@ class ShrinkMorph:
     ps.remove_all_structures()
 
     self.display_buildplate()
-    x_start = -0.8
-    step_size = 1.6/float(self.num_rectangles) - 0.05
+    x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
+    step_size = self.rect_width
     build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
     build_face = np.empty(shape=(int(self.num_rectangles), 4))
-    y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
-    y_top = step_size * (self.rect_length / self.rect_width) / 2
+    y_bottom = -self.rect_length / 2
+    y_top = self.rect_length / 2
     for i in range(int(self.num_rectangles)):
       build_vert[i*4] = [x_start, y_bottom, 0.1]
       build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
@@ -313,8 +305,6 @@ class ShrinkMorph:
       build_vert[i*4+3] =  [x_start, y_top, 0.1]
       build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
       x_start += step_size + 0.05
-    build_vert[:, 0] *= self.printer.bed_size[0] / 2
-    build_vert[:, 1] *= self.printer.bed_size[1] / 2
     ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
 
     ps.set_user_callback(self.callback_calibrate)
@@ -324,6 +314,22 @@ class ShrinkMorph:
   def callback_calibrate(self):
     gui.PushItemWidth(200)
     #self.display_buildplate()
+
+    changed = gui.BeginCombo("Select printer", self.printer_profile)
+    if changed:
+      for val in self.printers_list:
+        _, selected = gui.Selectable(val, self.printer_profile==val)
+        if selected:
+          self.printer_profile = val
+          self.printer = togcode.Printer(self.printer_profile)
+          build_vert = np.array([[-1,-1,-0.1], [1, -1, -0.1], [1, 1, -0.1], [-1, 1, -0.1]])
+          build_vert[:, 0] *= self.printer.bed_size[0] / 2
+          build_vert[:, 1] *= self.printer.bed_size[1] / 2
+          ps.get_surface_mesh("Buildplate").update_vertex_positions(build_vert)
+      gui.EndCombo()
+    gui.PopItemWidth()
+
+    gui.PushItemWidth(100)
 
     changed_1, self.num_rectangles = gui.DragFloat("Number of Rectangles", self.num_rectangles, 1, 1, 10, "%.0f")
     changed_2, self.num_layers = gui.DragFloat("Number of Layers", self.num_layers, 1, 1, 20, "%.0f")
@@ -335,45 +341,26 @@ class ShrinkMorph:
     changed_8, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
 
     if changed_1 or changed_2 or changed_3 or changed_4 or changed_5 or changed_6 or changed_7 or changed_8:
-      x_start = -0.8
-      step_size = 1.6/float(self.num_rectangles) - 0.05
+      x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
+      step_size = self.rect_width
       build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
       build_face = np.empty(shape=(int(self.num_rectangles), 4))
-      y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
-      y_top = step_size * (self.rect_length / self.rect_width) / 2
+      y_bottom = -self.rect_length / 2
+      y_top = self.rect_length / 2
       for i in range(int(self.num_rectangles)):
         build_vert[i*4] = [x_start, y_bottom, 0.1]
         build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
         build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
         build_vert[i*4+3] =  [x_start, y_top, 0.1]
         build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-        x_start += step_size + 0.05
-      build_vert[:, 0] *= self.printer.bed_size[0] / 2
-      build_vert[:, 1] *= self.printer.bed_size[1] / 2
+        x_start += step_size + 0.1
 
       ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
 
 
     if gui.Button("Generate Calibration G-code"):
       self.generate_calibration(self.num_rectangles, self.num_layers, self.layer_height, self.rect_length, self.rect_width)
-      x_start = -0.8
-      step_size = 1.6/float(self.num_rectangles) - 0.05
-      build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
-      build_face = np.empty(shape=(int(self.num_rectangles), 4))
-      y_bottom = -(step_size * (self.rect_length / self.rect_width) / 2)
-      y_top = step_size * (self.rect_length / self.rect_width) / 2
-      for i in range(int(self.num_rectangles)):
-        build_vert[i*4] = [x_start, y_bottom, 0.1]
-        build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
-        build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
-        build_vert[i*4+3] =  [x_start, y_top, 0.1]
-        build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-        x_start += step_size + 0.05
-      build_vert[:, 0] *= self.printer.bed_size[0] / 2
-      build_vert[:, 1] *= self.printer.bed_size[1] / 2
-
-      ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
-
+    
     # if gui.Button("Back"):
     #     self.calibrate = False
     #     ps.unshow()
