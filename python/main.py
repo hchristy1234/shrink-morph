@@ -331,12 +331,12 @@ class ShrinkMorph:
 
     gui.PushItemWidth(100)
 
-    changed_1, self.num_rectangles = gui.DragFloat("Number of Rectangles", self.num_rectangles, 1, 1, 10, "%.0f")
-    changed_2, self.num_layers = gui.DragFloat("Number of Layers", self.num_layers, 1, 1, 20, "%.0f")
-    changed_3, self.layer_height = gui.DragFloat("Layer Height", self.layer_height, 0.01, 0, 50, "%.2f")
-    changed_4, self.printer.bed_temp = gui.DragFloat("Bed temperature", self.printer.bed_temp, 1, 20, 60, "%.0f")
-    changed_5, self.printer.extruder_temp = gui.DragFloat("Nozzle temperature", self.printer.extruder_temp, 1, 180, 230, "%.0f")
-    changed_6, self.printer.print_speed = gui.DragFloat("Printing speed (mm/s)", self.printer.print_speed, 1, 10, 100, "%.0f")
+    changed_1, self.num_rectangles = gui.InputInt("Number of Rectangles", self.num_rectangles, step=1)
+    changed_2, self.num_layers = gui.InputInt("Number of Layers", self.num_layers, step=1)
+    changed_3, self.layer_height = gui.InputFloat("Layer Height", self.layer_height, format="%.2f")
+    changed_4, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, format="%.0f")
+    changed_5, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
+    changed_6, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, format="%.0f")
     changed_7, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
     changed_8, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
 
