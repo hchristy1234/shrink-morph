@@ -16,7 +16,7 @@ class ShrinkMorph:
   lambda2 = 1.08
   wD = 1e-5
   E1 = 10
-  thickness = 1.218
+  thickness_sim = 1.218
   deltaLambda = 0.0226764665509417
   n_layers = 10
   lim = 1e-6
@@ -24,6 +24,7 @@ class ShrinkMorph:
   width = 200
   wM = 0.01
   wL = 0.01
+  thickness = 0.8
   num_rectangles = 5
   num_layers = 10
   layer_height = 0.08
@@ -89,7 +90,7 @@ class ShrinkMorph:
     ps.show()
 
   def callback_param(self):
-    # global lambda1, lambda2, wD, E1, thickness, deltaLambda, n_layers, lim, n_iter, width, P, self.V, self.F, printer_profile, with_smoothing
+    # global lambda1, lambda2, wD, E1, thickness_sim, deltaLambda, n_layers, lim, n_iter, width, P, self.V, self.F, printer_profile, with_smoothing
     gui.PushItemWidth(200)
 
     if gui.Button("Select File"):
@@ -153,7 +154,7 @@ class ShrinkMorph:
     if gui.TreeNode("Advanced"):
       changed, self.lambda1 = gui.InputFloat("self.lambda1", self.lambda1, 0, 0, "%.1e")
       changed, self.lambda2 = gui.InputFloat("self.lambda2", self.lambda2, 0, 0, "%.1e")
-      changed, self.thickness = gui.InputFloat("self.Thickness", self.thickness, 0, 0, "%.1e")
+      changed, self.thickness_sim = gui.InputFloat("self.Thickness", self.thickness_sim, 0, 0, "%.1e")
       changed, self.n_iter = gui.InputInt("Iterations", self.n_iter, step=1)
       changed, self.lim = gui.InputFloat("self.Limit", self.lim, 0, 0, "%.1e")
       gui.TreePop()
@@ -209,7 +210,7 @@ class ShrinkMorph:
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
-    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness)
+    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness_sim)
 
     ps.set_user_callback(self.callback_optim)
     ps.reset_camera_to_home_view()
@@ -231,7 +232,7 @@ class ShrinkMorph:
       ps.get_surface_mesh("Input mesh").update_vertex_positions(self.targetV)
 
     # if gui.Button("Simulation"):
-    #   shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness, self.width, self.n_iter, self.lim)
+    #   shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness_sim, self.width, self.n_iter, self.lim)
     #   ps.get_surface_mesh("Input mesh").set_transparency(0.5)
     #   ps.register_surface_mesh("Simulation", self.V, self.F)
 
@@ -332,8 +333,8 @@ class ShrinkMorph:
     gui.PushItemWidth(100)
 
     changed_1, self.num_rectangles = gui.InputInt("Number of Rectangles", self.num_rectangles, step=1)
-    changed_2, self.num_layers = gui.InputInt("Number of Layers", self.num_layers, step=1)
-    changed_3, self.layer_height = gui.InputFloat("Layer Height", self.layer_height, format="%.2f")
+    changed_2, self.printer.layer_height = gui.InputFloat("Layer Height", self.printer.layer_height, format="%.2f")
+    changed_3, self.thickness = gui.InputFloat("Total thickness", self.thickness, format="%.2f")    
     changed_4, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, format="%.0f")
     changed_5, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
     changed_6, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, format="%.0f")
@@ -359,7 +360,7 @@ class ShrinkMorph:
 
 
     if gui.Button("Generate Calibration G-code"):
-      self.generate_calibration(self.num_rectangles, self.num_layers, self.layer_height, self.rect_length, self.rect_width)
+      self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width)
     
     # if gui.Button("Back"):
     #     self.calibrate = False
@@ -456,41 +457,69 @@ class ShrinkMorph:
             line = file.readline()
     return paths
 
-  def generate_calibration(self, num_rectangles, num_layers, layer_height, rect_length, rect_width):
-    length = int(rect_length)
-    width = int(rect_width)
-    nb_layers = int(num_layers)
-    layer_height = float(layer_height)
-    jump_y = width+10
-    jump_x = 0
-    shift_y = 2 * jump_y
-    shift_x = 0
+  # def generate_calibration(self, num_rectangles, num_layers, layer_height, rect_length, rect_width):
+  #   length = int(rect_length)
+  #   width = int(rect_width)
+  #   nb_layers = int(num_layers)
+  #   layer_height = float(layer_height)
+  #   jump_y = width + 10
+  #   shift_y = 2 * jump_y
+  #   shift_x = 0
 
+  #   paths = []
+  #   #layer_height = 0.08
+  #   for j in range(int(num_rectangles)):
+  #       nb_layers = 10 - j
+  #       z = 0
+  #       for i in range(nb_layers):
+  #           z += layer_height + i / (nb_layers - 1) * 2 * (0.8 / nb_layers - 0.08)
+  #           y = -width / 2 - j * jump_y + shift_y
+  #           x = -length / 2 + shift_x
+  #           while(y < width / 2 - j * jump_y + shift_y):
+  #               path = []
+  #               if x < 0 + shift_x:
+  #                   path.append([x, y, z])
+  #                   x = length / 2 + shift_x
+  #                   path.append([x, y, z])
+  #               else:
+  #                   path.append([x, y, z])
+  #                   x = -length / 2 + shift_x
+  #                   path.append([x, y, z])
+  #               y += 0.4
+  #               paths.append(np.array(path))
+  #           print(f"{z:.4f}") # for debug purposes
+  #   save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
+  #   self.printer.to_gcode(paths, save_path)
+
+  def zigzag_layer(self, length, width, posY, posZ, nozzle_width):
+    left = True
+    y = width / 2
     paths = []
-    #layer_height = 0.08
-    for j in range(int(num_rectangles)):
-        nb_layers = 10 - j
-        z = 0
-        for i in range(nb_layers):
-            z += layer_height + i / (nb_layers - 1) * 2 * (0.8 / nb_layers - 0.08)
-            y = -width / 2 -j * jump_y + shift_y
-            x = -length / 2 + shift_x
-            while(y < width / 2 - j * jump_y + shift_y):
-                path = []
-                if x < 0 + shift_x:
-                    path.append([x, y, z])
-                    x = length / 2 + shift_x
-                    path.append([x, y, z])
-                else:
-                    path.append([x, y, z])
-                    x = -length / 2 + shift_x
-                    path.append([x, y, z])
-                y += 0.4
-                paths.append(np.array(path))
-            print(f"{z:.4f}") # for debug purposes
-    save_directory = filedialog.askdirectory()
-    save_path = save_directory + "/calibration.gcode"
-    self.printer.to_gcode(paths, save_path)
+    while(y > -width / 2):
+      if left: # go from left to right
+        paths.append(np.array([[0, posY + y, posZ], [length, posY + y, posZ]]))
+        left = False
+      else: # go from right to left
+        paths.append(np.array([[length, posY + y, posZ], [0, posY + y, posZ]]))
+        left = True
+      y -= nozzle_width
+    return paths
+  
+  def modified_layer_height(self, layer_height, layer_id, rectangle_id, nb_layers, gradient = 0.001):
+      return (layer_id + 1) * layer_height + rectangle_id * (-gradient + layer_id * gradient / (nb_layers - 1))
+
+  def generate_calibration(self, nb_rectangles, layer_height, total_thickness, nozzle_width, rect_length, rect_width, gap_width=10):
+    nb_layers = round(total_thickness / layer_height)
+    paths = []
+    for i in range(nb_layers):
+        posY = 0
+        for j in range(nb_rectangles):
+          posY -= rect_width + gap_width
+          posZ = self.modified_layer_height(layer_height, i, j, nb_layers)
+          paths = paths + self.zigzag_layer(rect_length, rect_width, posY, posZ, nozzle_width)
+          print(f"{posZ:.4f}") # for debug purposes
+    save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
+    self.printer.to_gcode([], save_path)
 
 main = ShrinkMorph()
 main.show()
