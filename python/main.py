@@ -519,7 +519,7 @@ class ShrinkMorph:
           paths = paths + self.zigzag_layer(rect_length, rect_width, posY, posZ, nozzle_width)
           print(f"{posZ:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
-    self.printer.to_gcode([], save_path)
+    self.printer.to_gcode(paths, save_path)
 
 main = ShrinkMorph()
 main.show()
