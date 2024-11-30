@@ -311,6 +311,9 @@ class ShrinkMorph:
     ps.set_user_callback(self.callback_calibrate)
     ps.reset_camera_to_home_view()
     ps.show()
+
+  gradient = 0.0005
+  discrete = False
   
   def callback_calibrate(self):
     gui.PushItemWidth(200)
@@ -338,10 +341,13 @@ class ShrinkMorph:
     changed_4, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, format="%.0f")
     changed_5, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
     changed_6, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, format="%.0f")
-    changed_7, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
-    changed_8, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+    changed_7, self.printer.first_layer_speed = gui.InputFloat("First layer speed (mm/s)", self.printer.first_layer_speed, format="%.0f")
+    changed_8, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
+    changed_9, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+    changed_10, self.gradient = gui.InputFloat("Gradient", self.gradient, format="%.4f")
+    changed_11, self.discrete = gui.Checkbox("Discrete", self.discrete)
 
-    if changed_1 or changed_2 or changed_3 or changed_4 or changed_5 or changed_6 or changed_7 or changed_8:
+    if changed_1 or changed_2 or changed_3 or changed_4 or changed_5 or changed_6 or changed_7 or changed_8 or changed_9 or changed_10 or changed_11:
       x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
       step_size = self.rect_width
       build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
@@ -360,8 +366,9 @@ class ShrinkMorph:
 
 
     if gui.Button("Generate Calibration G-code"):
-      self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width)
-    
+      layer_height = self.printer.layer_height
+      self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width, self.gradient, self.discrete)
+      self.printer.layer_height = layer_height
     # if gui.Button("Back"):
     #     self.calibrate = False
     #     ps.unshow()
@@ -457,40 +464,6 @@ class ShrinkMorph:
             line = file.readline()
     return paths
 
-  # def generate_calibration(self, num_rectangles, num_layers, layer_height, rect_length, rect_width):
-  #   length = int(rect_length)
-  #   width = int(rect_width)
-  #   nb_layers = int(num_layers)
-  #   layer_height = float(layer_height)
-  #   jump_y = width + 10
-  #   shift_y = 2 * jump_y
-  #   shift_x = 0
-
-  #   paths = []
-  #   #layer_height = 0.08
-  #   for j in range(int(num_rectangles)):
-  #       nb_layers = 10 - j
-  #       z = 0
-  #       for i in range(nb_layers):
-  #           z += layer_height + i / (nb_layers - 1) * 2 * (0.8 / nb_layers - 0.08)
-  #           y = -width / 2 - j * jump_y + shift_y
-  #           x = -length / 2 + shift_x
-  #           while(y < width / 2 - j * jump_y + shift_y):
-  #               path = []
-  #               if x < 0 + shift_x:
-  #                   path.append([x, y, z])
-  #                   x = length / 2 + shift_x
-  #                   path.append([x, y, z])
-  #               else:
-  #                   path.append([x, y, z])
-  #                   x = -length / 2 + shift_x
-  #                   path.append([x, y, z])
-  #               y += 0.4
-  #               paths.append(np.array(path))
-  #           print(f"{z:.4f}") # for debug purposes
-  #   save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
-  #   self.printer.to_gcode(paths, save_path)
-
   def zigzag_layer(self, length, width, posY, posZ, nozzle_width):
     left = True
     y = width / 2
@@ -505,19 +478,27 @@ class ShrinkMorph:
       y -= nozzle_width
     return paths
   
-  def modified_layer_height(self, layer_height, layer_id, rectangle_id, nb_layers, gradient = 0.001):
-      return (layer_id + 1) * layer_height + rectangle_id * (-gradient + layer_id * gradient / (nb_layers - 1))
+  def modified_layer_height(self, layer_height, layer_id, rectangle_id, nb_layers, gradient, discrete):
+      if discrete:
+        if layer_id == 0:
+          return layer_height - rectangle_id * gradient
+        else:
+          return layer_height + rectangle_id * gradient / (nb_layers - 1)
+      else:
+        return layer_height + rectangle_id * (layer_id - (nb_layers - 1) / 2) * gradient
 
-  def generate_calibration(self, nb_rectangles, layer_height, total_thickness, nozzle_width, rect_length, rect_width, gap_width=10):
+  def generate_calibration(self, nb_rectangles, layer_height, total_thickness, nozzle_width, rect_length, rect_width, gradient, discrete, gap_width=10):
     nb_layers = round(total_thickness / layer_height)
     paths = []
+    posZ = np.zeros(nb_rectangles)
+    print(gradient, nb_layers, layer_height, total_thickness)
     for i in range(nb_layers):
         posY = 0
         for j in range(nb_rectangles):
           posY -= rect_width + gap_width
-          posZ = self.modified_layer_height(layer_height, i, j, nb_layers)
-          paths = paths + self.zigzag_layer(rect_length, rect_width, posY, posZ, nozzle_width)
-          print(f"{posZ:.4f}") # for debug purposes
+          posZ[j] += self.modified_layer_height(layer_height, i, j, nb_layers, gradient, discrete)
+          paths = paths + self.zigzag_layer(rect_length, rect_width, posY, posZ[j], nozzle_width)
+          print(f"{posZ[j]:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
     self.printer.to_gcode(paths, save_path)
 
