@@ -336,18 +336,11 @@ class ShrinkMorph:
     gui.PushItemWidth(100)
 
     changed_1, self.num_rectangles = gui.InputInt("Number of Rectangles", self.num_rectangles, step=1)
-    changed_2, self.printer.layer_height = gui.InputFloat("Layer Height", self.printer.layer_height, format="%.2f")
-    changed_3, self.thickness = gui.InputFloat("Total thickness", self.thickness, format="%.2f")    
-    changed_4, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, format="%.0f")
-    changed_5, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
-    changed_6, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, format="%.0f")
-    changed_7, self.printer.first_layer_speed = gui.InputFloat("First layer speed (mm/s)", self.printer.first_layer_speed, format="%.0f")
-    changed_8, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
-    changed_9, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
-    changed_10, self.gradient = gui.InputFloat("Gradient", self.gradient, format="%.4f")
-    changed_11, self.discrete = gui.Checkbox("Discrete", self.discrete)
+    changed_2, self.thickness = gui.InputFloat("Total thickness", self.thickness, format="%.2f")    
+    changed_3, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
+    changed_4, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
 
-    if changed_1 or changed_2 or changed_3 or changed_4 or changed_5 or changed_6 or changed_7 or changed_8 or changed_9 or changed_10 or changed_11:
+    if changed_1 or changed_2 or changed_3 or changed_4:
       x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
       step_size = self.rect_width
       build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
@@ -364,6 +357,14 @@ class ShrinkMorph:
 
       ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
 
+    _, self.printer.layer_height = gui.InputFloat("Layer Height", self.printer.layer_height, format="%.2f")
+    _, self.printer.bed_temp = gui.InputFloat("Bed temperature", self.printer.bed_temp, format="%.0f")
+    _, self.printer.extruder_temp = gui.InputFloat("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
+    _, self.printer.print_speed = gui.InputFloat("Printing speed (mm/s)", self.printer.print_speed, format="%.0f")
+    _, self.printer.first_layer_speed = gui.InputFloat("First layer speed (mm/s)", self.printer.first_layer_speed, format="%.0f")
+    _, self.gradient = gui.InputFloat("Gradient", self.gradient, format="%.4f")
+    _, self.discrete = gui.Checkbox("Discrete", self.discrete)
+    _, self.printer.nloops = gui.InputInt("Skirt loops", self.printer.nloops, step=1)
 
     if gui.Button("Generate Calibration G-code"):
       layer_height = self.printer.layer_height
@@ -410,7 +411,7 @@ class ShrinkMorph:
       self.curr_layer = self.curr_layer + 1
 
     gui.PushItemWidth(200)
-    changed = gui.BeginCombo("Select self.printer", self.printer_profile)
+    changed = gui.BeginCombo("Select printer", self.printer_profile)
     if changed:
       for val in self.printers_list:
         _, selected = gui.Selectable(val, self.printer_profile==val)
@@ -491,13 +492,12 @@ class ShrinkMorph:
     nb_layers = round(total_thickness / layer_height)
     paths = []
     posZ = np.zeros(nb_rectangles)
-    print(gradient, nb_layers, layer_height, total_thickness)
     for i in range(nb_layers):
         posY = 0
         for j in range(nb_rectangles):
           posY -= rect_width + gap_width
           posZ[j] += self.modified_layer_height(layer_height, i, j, nb_layers, gradient, discrete)
-          paths = paths + self.zigzag_layer(rect_length, rect_width, posY, posZ[j], nozzle_width)
+          paths = paths + self.zigzag_layer(rect_length - self.printer.nozzle_width, rect_width, posY, posZ[j], nozzle_width)
           print(f"{posZ[j]:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
     self.printer.to_gcode(paths, save_path)
