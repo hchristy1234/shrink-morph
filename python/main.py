@@ -277,8 +277,9 @@ class ShrinkMorph:
     self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2, target_edge_length)
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
-    trajectories = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
-    nodes, edges = self.convert_trajectories(trajectories)
+    layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
+    nodes, edges = self.convert_trajectories(layer)
+    self.trajectories = [layer]
     self.layer_nodes = [nodes]
     self.layer_edges = [edges]
     ps.remove_all_structures()
@@ -403,8 +404,9 @@ class ShrinkMorph:
   curr_layer = 1
   def callback_traj(self):
     if self.curr_layer < self.n_layers:
-      trajectories = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
-      nodes, edges = self.convert_trajectories(trajectories)
+      layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
+      self.trajectories.append(layer)
+      nodes, edges = self.convert_trajectories(layer)
       self.layer_nodes.append(nodes)
       self.layer_edges.append(edges)
       self.display_trajectories(self.layer_nodes, self.layer_edges)
@@ -446,7 +448,11 @@ class ShrinkMorph:
       ps.remove_all_structures()
     if gui.Button("Export to g-code"):
       filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-      self.printer.to_gcode(self.trajectories, filename)
+# TODO Implement G-code export
+# self.trajectories is a list(np.array), each np.array is a layer: list of paths, each path is a list of 2D positions
+# change the 2D positions into 3D with correct z value
+# "flatten" the outer array: merge all elements of self.trajectories into one "result" np.array
+      # self.printer.to_gcode(result, filename)
   
   def read_trajectories(self, filename):
     print("reading file " + filename)
