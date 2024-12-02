@@ -7,10 +7,9 @@
 std::vector<std::vector<geometrycentral::Vector3>>
 orderPolylines(const std::vector<std::vector<geometrycentral::Vector3>>& isolines);
 
-std::vector<std::vector<geometrycentral::Vector3>>
-simplifyPolylines(const std::vector<std::vector<geometrycentral::Vector3>>& polylines, double z = 0);
+std::vector<Eigen::MatrixXd> simplifyPolylines(const std::vector<std::vector<geometrycentral::Vector3>>& polylines);
 
-std::vector<std::vector<std::vector<geometrycentral::Vector3>>>
+std::vector<std::vector<Eigen::MatrixXd>>
 generatePaths(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
               const Eigen::VectorXd& theta1,
               const Eigen::VectorXd& theta2,
@@ -18,7 +17,7 @@ generatePaths(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
               int nLayers,
               double spacing);
 
-std::vector<std::vector<geometrycentral::Vector3>> generateOneLayer(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
+std::vector<Eigen::MatrixXd> generateOneLayer(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
                                                                     const Eigen::VectorXd& theta1,
                                                                     const Eigen::VectorXd& theta2,
                                                                     const Eigen::SparseMatrix<double>& massMatrix,
@@ -30,7 +29,7 @@ std::vector<std::vector<geometrycentral::Vector3>> generateOneLayer(geometrycent
                                                                     double spacing);
 
 void writePaths(const std::string& filename,
-                const std::vector<std::vector<geometrycentral::Vector3>>& paths,
+                const std::vector<Eigen::MatrixXd>& paths,
                 double height);
 
 std::vector<std::vector<geometrycentral::Vector3>> edgeToPolyline(const std::vector<geometrycentral::Vector3>& points,

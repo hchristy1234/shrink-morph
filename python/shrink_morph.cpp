@@ -98,7 +98,7 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
                 double E1,
                 double lambda1,
                 double lambda2,
-                double deltaLambda,
+                // double deltaLambda,
                 double thickness,
                 double width,
                 int n_iter,
@@ -123,7 +123,7 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
   VertexData<double> _theta2(mesh, theta2);
 
   // Define simulation function
-  auto func = simulationFunction(mesh, MrInv, theta1, _theta2, E1, lambda1, lambda2, deltaLambda, thickness);
+  auto func = simulationFunction(mesh, MrInv, theta1, _theta2, E1, lambda1, lambda2, 0, thickness);
 
   // ---------------- (Projected) Newton optimization ----------------
   LLTSolver solver;
@@ -142,7 +142,7 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
                                        double E1,
                                        double lambda1,
                                        double lambda2,
-                                       double deltaLambda,
+                                      //  double deltaLambda,
                                        double thickness,
                                        double width,
                                        int n_iter,
@@ -172,51 +172,51 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
   VertexData<double> theta2(mesh, 0);
 
   // Define optimization function
-  auto adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, deltaLambda, thickness);
+  auto adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, 0, thickness);
 
   // Optimize this energy function using SGN [Zehnder et al. 2021]
   V = sparse_gauss_newton(geometry, targetV, MrInv, theta1, theta2, adjointFunc, fixedIdx, n_iter, lim, wM, wL, E1,
-                          lambda1, lambda2, deltaLambda, thickness);
+                          lambda1, lambda2, 0, thickness);
 
   return theta2.toVector();
 }
 
-std::vector<Eigen::MatrixXd> generateTrajectories(const nb::DRef<Eigen::MatrixXd>& P,
-                                                  const nb::DRef<Eigen::MatrixXi>& F,
-                                                  const nb::DRef<Eigen::VectorXd>& theta1,
-                                                  const nb::DRef<Eigen::VectorXd>& theta2,
-                                                  double layerHeight,
-                                                  double spacing,
-                                                  int nLayers)
-{
-  using namespace geometrycentral;
-  using namespace geometrycentral::surface;
+// std::vector<Eigen::MatrixXd> generateTrajectories(const nb::DRef<Eigen::MatrixXd>& P,
+//                                                   const nb::DRef<Eigen::MatrixXi>& F,
+//                                                   const nb::DRef<Eigen::VectorXd>& theta1,
+//                                                   const nb::DRef<Eigen::VectorXd>& theta2,
+//                                                   double layerHeight,
+//                                                   double spacing,
+//                                                   int nLayers)
+// {
+//   using namespace geometrycentral;
+//   using namespace geometrycentral::surface;
 
-  // create geometry-central objects
-  ManifoldSurfaceMesh mesh(F);
-  Eigen::MatrixXd P_3D(P.rows(), 3);
-  P_3D.leftCols(2) = P;
-  P_3D.col(2).setZero();
-  VertexPositionGeometry geometryUV(mesh, P_3D);
+//   // create geometry-central objects
+//   ManifoldSurfaceMesh mesh(F);
+//   Eigen::MatrixXd P_3D(P.rows(), 3);
+//   P_3D.leftCols(2) = P;
+//   P_3D.col(2).setZero();
+//   VertexPositionGeometry geometryUV(mesh, P_3D);
 
-  std::vector<std::vector<std::vector<Vector3>>> paths =
-      generatePaths(geometryUV, theta1, theta2, layerHeight, nLayers, spacing);
+//   std::vector<std::vector<Eigen::MatrixXd>> paths =
+//       generatePaths(geometryUV, theta1, theta2, layerHeight, nLayers, spacing);
 
-  // convert data to the right format
-  std::vector<Eigen::MatrixXd> dataArray;
-  for(auto layer: paths)
-  {
-    for(auto path: layer)
-    {
-      Eigen::MatrixXd traj(path.size(), 3);
-      for(int i = 0; i < path.size(); ++i)
-        for(int j = 0; j < 3; ++j)
-          traj(i, j) = path[i][j];
-      dataArray.push_back(traj);
-    }
-  }
-  return dataArray;
-}
+//   // convert data to the right format
+//   std::vector<Eigen::MatrixXd> dataArray;
+//   for(auto layer: paths)
+//   {
+//     for(auto path: layer)
+//     {
+//       Eigen::MatrixXd traj(path.size(), 3);
+//       for(int i = 0; i < path.size(); ++i)
+//         for(int j = 0; j < 3; ++j)
+//           traj(i, j) = path[i][j];
+//       dataArray.push_back(traj);
+//     }
+//   }
+//   return dataArray;
+// }
 
 struct StripeAlgo
 {
@@ -259,19 +259,7 @@ struct StripeAlgo
     P_3D.col(2).setZero();
     VertexPositionGeometry geometryUV(mesh, P_3D);
 
-    auto paths = generateOneLayer(geometryUV, theta1, theta2, massMatrix, u, solver, i, nLayers, layerHeight, spacing);
-
-    // convert data to the right format
-    std::vector<Eigen::MatrixXd> dataArray;
-    for(auto path: paths)
-    {
-      Eigen::MatrixXd traj(path.size(), 3);
-      for(int i = 0; i < path.size(); ++i)
-        for(int j = 0; j < 3; ++j)
-          traj(i, j) = path[i][j];
-      dataArray.push_back(traj);
-    }
-    return dataArray;
+    return generateOneLayer(geometryUV, theta1, theta2, massMatrix, u, solver, i, nLayers, layerHeight, spacing);
   }
 };
 
@@ -325,7 +313,7 @@ NB_MODULE(shrink_morph_py, m)
         });
   m.def("simulation", &simulation);
   m.def("directions_optimization", &directionsOptimization);
-  m.def("generate_trajectories", &generateTrajectories);
+  // m.def("generate_trajectories", &generateTrajectories);
   m.def("vertex_based_stretch_angles", &vertexBasedStretchAngles);
   nb::class_<StripeAlgo>(m, "StripeAlgo")
       .def(nb::init<const nb::DRef<Eigen::MatrixXd>&, const nb::DRef<Eigen::MatrixXi>&>())
@@ -333,8 +321,7 @@ NB_MODULE(shrink_morph_py, m)
 
   nb::class_<SGNSolver>(m, "SGNSolver")
       .def(nb::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&, const Eigen::MatrixXi&,
-                    double, double, double, double, double>())
-      .def("newton_decrement", &SGNSolver::newton_decrement)
+                    double, double, double, double>())
       .def("solve_one_step", &SGNSolver::solveOneStep)
       .def("optimizedV", &SGNSolver::vertices)
       .def("distance", &SGNSolver::distance)

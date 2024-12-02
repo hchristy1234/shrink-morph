@@ -144,9 +144,9 @@ std::vector<std::vector<Vector3>> orderPolylines(const std::vector<std::vector<V
   return polylines;
 }
 
-std::vector<std::vector<Vector3>> simplifyPolylines(const std::vector<std::vector<Vector3>>& polylines, double z)
+std::vector<Eigen::MatrixXd> simplifyPolylines(const std::vector<std::vector<Vector3>>& polylines)
 {
-  std::vector<std::vector<Vector3>> simplified;
+  std::vector<Eigen::MatrixXd> simplified;
 
   for(auto& polyline: polylines)
   {
@@ -160,28 +160,23 @@ std::vector<std::vector<Vector3>> simplifyPolylines(const std::vector<std::vecto
     Eigen::VectorXi J;
     igl::ramer_douglas_peucker(P, 1e-2, S, J);
 
-    // convert back to geometrycentral
-    std::vector<Vector3> simplifiedPolyline(S.rows());
-    for(int i = 0; i < S.rows(); ++i)
-      simplifiedPolyline[i] = Vector3{S(i, 0), S(i, 1), z};
-
-    simplified.push_back(simplifiedPolyline);
+    simplified.push_back(S);
   }
   return simplified;
 }
 
-void writePaths(const std::string& filename, const std::vector<std::vector<Vector3>>& paths, double height)
+void writePaths(const std::string& filename, const std::vector<Eigen::MatrixXd>& paths, double height)
 {
   std::ofstream s(filename, std::ios_base::app);
   for(const auto& path: paths)
   {
-    s << path.size() << "\n";
-    for(Vector3 p: path)
-      s << p.x << " " << p.y << " " << height << "\n";
+    s << path.rows() << "\n";
+    for(int i = 0; i < path.rows(); ++i)
+      s << path(i, 0) << " " << path(i, 1) << " " << height << "\n";
   }
 }
 
-std::vector<std::vector<geometrycentral::Vector3>> generateOneLayer(EmbeddedGeometryInterface& geometry,
+std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometry,
                                                                     const Eigen::VectorXd& theta1,
                                                                     const Eigen::VectorXd& theta2,
                                                                     const Eigen::SparseMatrix<double> &massMatrix,
@@ -254,17 +249,17 @@ std::vector<std::vector<geometrycentral::Vector3>> generateOneLayer(EmbeddedGeom
       extractPolylinesFromStripePattern(geometry, stripeValues, stripeIndices, fieldIndices, directionField);
   auto polylines = edgeToPolyline(points, edges);
   polylines = orderPolylines(polylines);
-  return simplifyPolylines(polylines, (i + 1) * layerHeight);
+  return simplifyPolylines(polylines);
 }
 
-std::vector<std::vector<std::vector<geometrycentral::Vector3>>> generatePaths(EmbeddedGeometryInterface& geometry,
+std::vector<std::vector<Eigen::MatrixXd>> generatePaths(EmbeddedGeometryInterface& geometry,
                                                                               const Eigen::VectorXd& theta1,
                                                                               const Eigen::VectorXd& theta2,
                                                                               double layerHeight,
                                                                               int nLayers,
                                                                               double spacing)
 {
-  std::vector<std::vector<std::vector<Vector3>>> paths;
+  std::vector<std::vector<Eigen::MatrixXd>> paths;
   SparseMatrix<double> massMatrix = computeRealVertexMassMatrix(geometry);
   LDLTSolver solver;
   Vector<double> u = Vector<double>::Random(geometry.mesh.nVertices() * 2);

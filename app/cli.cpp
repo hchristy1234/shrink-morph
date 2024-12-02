@@ -183,7 +183,7 @@ int main(int argc, char* argv[])
   for(auto& mat: subdivMat)
     th2 = mat * th2;
 
-  std::vector<std::vector<std::vector<Vector3>>> paths =
+  std::vector<std::vector<Eigen::MatrixXd>> paths =
       generatePaths(geometryUV, th1, th2, layerHeight, nLayers, spacing);
 
   for(int i = 0; i < nLayers; ++i)

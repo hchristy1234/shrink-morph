@@ -12,4 +12,4 @@ void generateTrajectories(geometrycentral::surface::VertexPositionGeometry& geom
                           double spacing = 0.4,
                           int nLayers = 10);
 
-void drawPathsAndTravels(const std::vector<std::vector<geometrycentral::Vector3>>& paths, double spacing, int id);
+void drawPathsAndTravels(const std::vector<Eigen::MatrixXd>& polylines, double spacing, int id);

@@ -58,7 +58,7 @@ void generateTrajectories(VertexPositionGeometry& geometry,
   for(auto& mat: subdivMat)
     th2 = mat * th2;
 
-  std::vector<std::vector<std::vector<Vector3>>> paths =
+  std::vector<std::vector<Eigen::MatrixXd>> paths =
       generatePaths(geometryUV, th1, th2, layerHeight, nLayers, spacing);
 
   // geometryUV.requireDECOperators();
@@ -105,46 +105,46 @@ void generateTrajectories(VertexPositionGeometry& geometry,
   }
 }
 
-void drawPathsAndTravels(const std::vector<std::vector<Vector3>>& polylines, double spacing, int id)
+void drawPathsAndTravels(const std::vector<Eigen::MatrixXd>& polylines, double spacing, int id)
 {
-  std::vector<Vector3> nodes;
-  std::vector<std::array<size_t, 2>> edges;
-  std::vector<double> colors;
+//   std::vector<Vector3> nodes;
+//   std::vector<std::array<size_t, 2>> edges;
+//   std::vector<double> colors;
 
-  double c = 0;
-  size_t k = 0;
-  for(auto& polyline: polylines)
-  {
-    nodes.insert(nodes.end(), polyline.begin(), polyline.end());
-    colors.insert(colors.end(), polyline.size() - 1, c);
-    c += 1;
+//   double c = 0;
+//   size_t k = 0;
+//   for(auto& polyline: polylines)
+//   {
+//     nodes.insert(nodes.end(), polyline.begin(), polyline.end());
+//     colors.insert(colors.end(), polyline.size() - 1, c);
+//     c += 1;
 
-    for(size_t j = 0; j < polyline.size() - 1; ++j)
-    {
-      edges.push_back({k + j, k + j + 1});
-    }
-    k += polyline.size();
-  }
+//     for(size_t j = 0; j < polyline.size() - 1; ++j)
+//     {
+//       edges.push_back({k + j, k + j + 1});
+//     }
+//     k += polyline.size();
+//   }
 
-  std::vector<Vector3> nodes2;
-  std::vector<std::array<size_t, 2>> edges2;
-  double distance = 0;
-  for(size_t i = 0; i < polylines.size() - 1; ++i)
-  {
-    nodes2.push_back(polylines[i][polylines[i].size() - 1]);
-    nodes2.push_back(polylines[i + 1][0]);
-    edges2.push_back({2 * i, 2 * i + 1});
-    distance += norm(polylines[i][polylines[i].size() - 1] - polylines[i + 1][0]);
-  }
-  std::cout << "Layer " << id << ": total travel distance = " << distance << "mm.\n";
+//   std::vector<Vector3> nodes2;
+//   std::vector<std::array<size_t, 2>> edges2;
+//   double distance = 0;
+//   for(size_t i = 0; i < polylines.size() - 1; ++i)
+//   {
+//     nodes2.push_back(polylines[i][polylines[i].size() - 1]);
+//     nodes2.push_back(polylines[i + 1][0]);
+//     edges2.push_back({2 * i, 2 * i + 1});
+//     distance += norm(polylines[i][polylines[i].size() - 1] - polylines[i + 1][0]);
+//   }
+//   std::cout << "Layer " << id << ": total travel distance = " << distance << "mm.\n";
 
-  polyscope::registerCurveNetwork("Layer " + std::to_string(id), nodes, edges)->setRadius(spacing / 2, false);
-  polyscope::getCurveNetwork("Layer " + std::to_string(id))
-      ->addEdgeScalarQuantity("order", colors)
-      ->setColorMap("blues")
-      ->setEnabled(true);
+//   polyscope::registerCurveNetwork("Layer " + std::to_string(id), nodes, edges)->setRadius(spacing / 2, false);
+//   polyscope::getCurveNetwork("Layer " + std::to_string(id))
+//       ->addEdgeScalarQuantity("order", colors)
+//       ->setColorMap("blues")
+//       ->setEnabled(true);
 
-  polyscope::registerCurveNetwork("Travel " + std::to_string(id), nodes2, edges2)
-      ->setRadius(spacing / 2, false)
-      ->setEnabled(false);
+//   polyscope::registerCurveNetwork("Travel " + std::to_string(id), nodes2, edges2)
+//       ->setRadius(spacing / 2, false)
+//       ->setEnabled(false);
 }

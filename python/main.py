@@ -17,7 +17,7 @@ class ShrinkMorph:
   wD = 1e-5
   E1 = 10
   thickness_sim = 1.218
-  deltaLambda = 0.0226764665509417
+  # deltaLambda = 0.0226764665509417
   n_layers = 10
   lim = 1e-6
   n_iter = 1000
@@ -210,7 +210,7 @@ class ShrinkMorph:
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
-    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness_sim)
+    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness_sim)
 
     ps.set_user_callback(self.callback_optim)
     ps.reset_camera_to_home_view()

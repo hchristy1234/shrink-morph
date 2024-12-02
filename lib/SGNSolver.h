@@ -15,7 +15,7 @@ public:
             double _E1,
             double _lambda1,
             double _lambda2,
-            double _deltaLambda,
+            // double _deltaLambda,
             double _thickness);
 
   double distance(const Eigen::VectorXd& _theta);
@@ -56,7 +56,7 @@ private:
   double E1;
   double lambda1;
   double lambda2;
-  double deltaLambda;
+  // double deltaLambda;
   double thickness;
   double decrement;
   int iter;

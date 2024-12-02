@@ -17,7 +17,7 @@ SGNSolver::SGNSolver(const Eigen::MatrixXd& targetV,
                      double _E1,
                      double _lambda1,
                      double _lambda2,
-                     double _deltaLambda,
+                    //  double _deltaLambda,
                      double _thickness)
     : wM(0.01),
       wL(0.01),
@@ -26,7 +26,7 @@ SGNSolver::SGNSolver(const Eigen::MatrixXd& targetV,
       E1(_E1),
       lambda1(_lambda1),
       lambda2(_lambda2),
-      deltaLambda(_deltaLambda),
+      // deltaLambda(_deltaLambda),
       F(_F),
       mesh(_F),
       geometry(mesh, targetV),
@@ -36,7 +36,7 @@ SGNSolver::SGNSolver(const Eigen::MatrixXd& targetV,
   MrInv = precomputeSimData(mesh, _P, F);
   theta1 = computeStretchAngles(mesh, targetV, F, MrInv);
   
-  adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, deltaLambda, thickness);
+  adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, 0, thickness);
 
 
   fixedIdx = findCenterFaceIndices(_P, F);
@@ -90,7 +90,7 @@ SGNSolver::SGNSolver(const Eigen::MatrixXd& targetV,
 double SGNSolver::distance(const Eigen::VectorXd& th)
 {
   VertexData<double> theta2(mesh, th);
-  auto simFunc = simulationFunction(mesh, MrInv, theta1, theta2, E1, lambda1, lambda2, deltaLambda, thickness);
+  auto simFunc = simulationFunction(mesh, MrInv, theta1, theta2, E1, lambda1, lambda2, 0, thickness);
   newton(x, simFunc, adjointSolver, max_iters, lim, false, fixedIdx);
 
   return (x - xTarget).dot(masses.cwiseProduct(x - xTarget)) + wM * th.dot(M_theta * th) + wL * th.dot(L * th);
