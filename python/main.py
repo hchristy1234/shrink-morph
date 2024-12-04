@@ -496,17 +496,20 @@ class ShrinkMorph:
 
   def generate_calibration(self, nb_rectangles, layer_height, total_thickness, nozzle_width, rect_length, rect_width, gradient, discrete, gap_width=10):
     nb_layers = round(total_thickness / layer_height)
-    paths = []
+    layers = []
     posZ = np.zeros(nb_rectangles)
     for i in range(nb_layers):
         posY = 0
         for j in range(nb_rectangles):
           posY -= rect_width + gap_width
-          posZ[j] += self.modified_layer_height(layer_height, i, j, nb_layers, gradient, discrete)
-          paths = paths + self.zigzag_layer(rect_length - self.printer.nozzle_width, rect_width, posY, posZ[j], nozzle_width)
+          height = self.modified_layer_height(layer_height, i, j, nb_layers, gradient, discrete)
+          posZ[j] += height
+          layer = {"height": height, 
+                   "paths": self.zigzag_layer(rect_length - self.printer.nozzle_width, rect_width, posY, posZ[j], nozzle_width)}
+          layers.append(layer)
           print(f"{posZ[j]:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
-    self.printer.to_gcode(paths, save_path)
+    self.printer.to_gcode(layers, save_path, variable_layer_height=True)
 
 main = ShrinkMorph()
 main.show()
