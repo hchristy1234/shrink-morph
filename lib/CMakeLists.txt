@@ -22,7 +22,7 @@ FetchContent_Declare(TinyAD
 # geometry-central
 FetchContent_Declare(geometry-central EXCLUDE_FROM_ALL 
   GIT_REPOSITORY https://github.com/DavidJourdan/geometry-central.git
-  GIT_TAG 246233171c2e49dcf68d2f2e60423bf27c9f63c2
+  GIT_TAG e04a2b7d2ff10f4e77ad3fcadc97d39a0db8b653
   SOURCE_DIR "${SHRINK_MORPH_ROOT}/deps/geometry-central-src"
   BINARY_DIR "${SHRINK_MORPH_ROOT}/deps/geometry-central-build"
 )

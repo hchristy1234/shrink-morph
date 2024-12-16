@@ -38,7 +38,6 @@ SGNSolver::SGNSolver(const Eigen::MatrixXd& targetV,
   
   adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, 0, thickness);
 
-
   fixedIdx = findCenterFaceIndices(_P, F);
 
   geometry.requireCotanLaplacian();

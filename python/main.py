@@ -174,10 +174,7 @@ class ShrinkMorph:
     ps.set_up_dir("neg_y_up")
 
     twilight_image = os.path.join(os.path.dirname(__file__), "twilight_colormap.png")
-    print(twilight_image)
     ps.load_color_map("twilight", twilight_image)
-
-    #ps.load_color_map("twilight", "data/twilight_colormap.png")
     ps.set_ground_plane_mode("shadow_only")
 
     # self.V = V
@@ -279,7 +276,10 @@ class ShrinkMorph:
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
     layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
     nodes, edges = self.convert_trajectories(layer)
-    self.trajectories = [layer]
+
+    for i in range(len(layer)):
+      layer[i] = np.column_stack((layer[i], self.printer.layer_height * np.ones(layer[i].shape[0])))
+    self.trajectories = [{"height": self.printer.layer_height, "paths": layer}]
     self.layer_nodes = [nodes]
     self.layer_edges = [edges]
     ps.remove_all_structures()
@@ -390,7 +390,7 @@ class ShrinkMorph:
       nodes = np.vstack((nodes, traj))
       edges = np.vstack((edges, new_edges))
 
-    return nodes, edges  
+    return nodes, edges
 
   def display_trajectories(self, nodes, edges):
     self.display_buildplate()
@@ -405,7 +405,11 @@ class ShrinkMorph:
   def callback_traj(self):
     if self.curr_layer < self.n_layers:
       layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
-      self.trajectories.append(layer)
+      
+      for i in range(len(layer)):
+        layer[i] = np.column_stack((layer[i], (self.curr_layer + 1) * self.printer.layer_height * np.ones(layer[i].shape[0])))
+
+      self.trajectories.append({"height": self.printer.layer_height, "paths": layer})
       nodes, edges = self.convert_trajectories(layer)
       self.layer_nodes.append(nodes)
       self.layer_edges.append(edges)
@@ -448,11 +452,7 @@ class ShrinkMorph:
       ps.remove_all_structures()
     if gui.Button("Export to g-code"):
       filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-# TODO Implement G-code export
-# self.trajectories is a list(np.array), each np.array is a layer: list of paths, each path is a list of 2D positions
-# change the 2D positions into 3D with correct z value
-# "flatten" the outer array: merge all elements of self.trajectories into one "result" np.array
-      # self.printer.to_gcode(result, filename)
+      self.printer.to_gcode(self.trajectories, filename, variable_layer_height=True)
   
   def read_trajectories(self, filename):
     print("reading file " + filename)
