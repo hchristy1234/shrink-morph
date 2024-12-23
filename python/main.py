@@ -25,7 +25,7 @@ class ShrinkMorph:
   wM = 0.01
   wL = 0.01
   thickness = 0.8
-  num_rectangles = 5
+  num_rectangles = 3
   num_layers = 10
   layer_height = 0.08
   rect_length = 80
@@ -36,7 +36,8 @@ class ShrinkMorph:
     'Anet_A8', 
     'Anycubic_Mega_Zero',
     'Artillery_SW_X1', 
-    'BambuLab_X1C',
+    'Bambulab_P1S',
+    'Bambulab_X1C',
     'Creality_K1_Max', 
     'CR10',
     'CR10S_Pro', 
@@ -502,7 +503,7 @@ class ShrinkMorph:
         posY = 0
         for j in range(nb_rectangles):
           posY -= rect_width + gap_width
-          height = self.modified_layer_height(layer_height, i, j, nb_layers, gradient, discrete)
+          height = self.modified_layer_height(layer_height, i, j - (nb_rectangles - 1) / 2, nb_layers, gradient, discrete)
           posZ[j] += height
           layer = {"height": height, 
                    "paths": self.zigzag_layer(rect_length - self.printer.nozzle_width, rect_width, posY, posZ[j], nozzle_width)}
