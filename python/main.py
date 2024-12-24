@@ -18,7 +18,7 @@ class ShrinkMorph:
   E1 = 10
   thickness_sim = 1.218
   # deltaLambda = 0.0226764665509417
-  n_layers = 10
+  n_layers = 8
   lim = 1e-6
   n_iter = 1000
   width = 200
@@ -26,8 +26,6 @@ class ShrinkMorph:
   wL = 0.01
   thickness = 0.8
   num_rectangles = 3
-  num_layers = 10
-  layer_height = 0.08
   rect_length = 80
   rect_width = 20
   with_smoothing = False
@@ -39,12 +37,12 @@ class ShrinkMorph:
     'Bambulab_P1S',
     'Bambulab_X1C',
     'Creality_K1_Max', 
-    'CR10',
-    'CR10S_Pro', 
-    'CR10_S5', 
+    'Creality_CR-10',
+    'Creality_CR-10S_Pro', 
+    'Creality_CR-10S5', 
     'E3D_Toolchanger', 
-    'Ender2', 
-    'Ender3', 
+    'Creality_Ender_2', 
+    'Creality_Ender_3', 
     'Flsun_SR', 
     'Kingroon_P3', 
     'Kywoo3D_Tycoon'
@@ -111,10 +109,10 @@ class ShrinkMorph:
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
 
-    changed = gui.BeginCombo("Select printer", self.printer_profile)
+    changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
     if changed:
       for val in self.printers_list:
-        _, selected = gui.Selectable(val, self.printer_profile==val)
+        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
@@ -275,6 +273,7 @@ class ShrinkMorph:
     self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2, target_edge_length)
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
+    self.n_layers = int(self.thickness / self.printer.layer_height)
     layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
     nodes, edges = self.convert_trajectories(layer)
 
@@ -321,10 +320,10 @@ class ShrinkMorph:
     gui.PushItemWidth(200)
     #self.display_buildplate()
 
-    changed = gui.BeginCombo("Select printer", self.printer_profile)
+    changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
     if changed:
       for val in self.printers_list:
-        _, selected = gui.Selectable(val, self.printer_profile==val)
+        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
@@ -499,11 +498,14 @@ class ShrinkMorph:
     nb_layers = round(total_thickness / layer_height)
     layers = []
     posZ = np.zeros(nb_rectangles)
+    for j in range(nb_rectangles):
+      posZ[j] = (j - (nb_rectangles - 1) / 2) * 0.01
     for i in range(nb_layers):
         posY = 0
         for j in range(nb_rectangles):
           posY -= rect_width + gap_width
-          height = self.modified_layer_height(layer_height, i, j - (nb_rectangles - 1) / 2, nb_layers, gradient, discrete)
+          # height = self.modified_layer_height(layer_height, i, j - (nb_rectangles - 1) / 2, nb_layers, gradient, discrete)
+          height = layer_height
           posZ[j] += height
           layer = {"height": height, 
                    "paths": self.zigzag_layer(rect_length - self.printer.nozzle_width, rect_width, posY, posZ[j], nozzle_width)}
