@@ -96,7 +96,7 @@ class ShrinkMorph:
       filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
       self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
 
-      self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, 0, self.n_iter, self.lim)
+      self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
       scale = self.width / (np.max(self.P) - np.min(self.P))
       self.P *= scale
       self.V *= scale
@@ -125,7 +125,7 @@ class ShrinkMorph:
 
     gui.PushItemWidth(100)
     changed, self.with_smoothing = gui.Checkbox("With smoothing", self.with_smoothing) 
-    if changed:
+    if changed and ps.has_surface_mesh("Parameterization"):
       self.P = shrink_morph_py.reparameterization(self.V, self.P, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
       ps.get_surface_mesh("Parameterization").update_vertex_positions(self.P)
 
@@ -133,22 +133,25 @@ class ShrinkMorph:
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
-    changed, self.width = gui.DragFloat("Width", self.width, 1, 1, 500, "%.0f")
-    if changed and self.width > 0:
-      scale = self.width / (np.max(self.P) - np.min(self.P))
-      self.P *= scale
-      self.V *= scale
-      ps.get_surface_mesh("Parameterization").update_vertex_positions(self.P)
 
-    if gui.Button("Increase mesh resolution"):
-      self.V, self.P, self.F, _ = shrink_morph_py.subdivide(self.V, self.P, self.F, np.array([]))
-      self.P = shrink_morph_py.reparameterization(self.V, self.P, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
-      ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+    if ps.has_surface_mesh("Parameterization"):
+      changed, self.width = gui.DragFloat("Width", self.width, 1, 1, 500, "%.0f")
 
-      sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+      if changed and self.width > 0:
+        scale = self.width / (np.max(self.P) - np.min(self.P))
+        self.P *= scale
+        self.V *= scale
+        ps.get_surface_mesh("Parameterization").update_vertex_positions(self.P)
+
+      if gui.Button("Increase mesh resolution"):
+        self.V, self.P, self.F, _ = shrink_morph_py.subdivide(self.V, self.P, self.F, np.array([]))
+        self.P = shrink_morph_py.reparameterization(self.V, self.P, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
+        ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+
+        sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
     if gui.TreeNode("Advanced"):
       changed, self.lambda1 = gui.InputFloat("self.lambda1", self.lambda1, 0, 0, "%.1e")
