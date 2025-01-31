@@ -34,3 +34,11 @@ computeTextureCoordinates(geometrycentral::surface::IntrinsicGeometryInterface& 
                           const geometrycentral::surface::VertexData<geometrycentral::Vector2>& directionField,
                           const geometrycentral::surface::VertexData<double>& frequencies,
                           const geometrycentral::surface::VertexData<geometrycentral::Vector2>& parameterization);
+
+// Takes as input a geometry along with vertex-based frequencies and a line field (2-RoSy) and outputs a 2\pi-periodic
+// function defined on triangle corners such that the 0 (mod 2\pi)
+// Isolines of this function are stripes perpendicular to the direction field spaced according to the target frequencies
+std::tuple<geometrycentral::surface::CornerData<double>, geometrycentral::surface::FaceData<int>, geometrycentral::surface::FaceData<int>>
+computeStripePattern(geometrycentral::surface::IntrinsicGeometryInterface& geometry,
+                     const geometrycentral::surface::VertexData<double>& frequencies,
+                     const geometrycentral::surface::VertexData<geometrycentral::Vector2>& directionField);

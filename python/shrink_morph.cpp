@@ -17,6 +17,7 @@
 #include <nanobind/stl/string.h>
 #include <nanobind/stl/tuple.h>
 #include <nanobind/stl/vector.h>
+// #include "geometrycentral/surface/stripe_patterns.h"
 
 #include <string>
 #include <tuple>
@@ -183,11 +184,8 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
 
 // std::vector<Eigen::MatrixXd> generateTrajectories(const nb::DRef<Eigen::MatrixXd>& P,
 //                                                   const nb::DRef<Eigen::MatrixXi>& F,
-//                                                   const nb::DRef<Eigen::VectorXd>& theta1,
-//                                                   const nb::DRef<Eigen::VectorXd>& theta2,
-//                                                   double layerHeight,
-//                                                   double spacing,
-//                                                   int nLayers)
+//                                                   const nb::DRef<Eigen::MatrixXd>& directions,
+//                                                   double spacing)
 // {
 //   using namespace geometrycentral;
 //   using namespace geometrycentral::surface;
@@ -199,23 +197,27 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
 //   P_3D.col(2).setZero();
 //   VertexPositionGeometry geometryUV(mesh, P_3D);
 
-//   std::vector<std::vector<Eigen::MatrixXd>> paths =
-//       generatePaths(geometryUV, theta1, theta2, layerHeight, nLayers, spacing);
+//   geometryUV.requireVertexTangentBasis();
+//   VertexData<double> frequencies(mesh, 1.0 / spacing);
 
-//   // convert data to the right format
-//   std::vector<Eigen::MatrixXd> dataArray;
-//   for(auto layer: paths)
+//   // compute direction field
+//   VertexData<Vector2> directionField(mesh);
+//   for(size_t i = 0; i < mesh.nVertices(); ++i)
 //   {
-//     for(auto path: layer)
-//     {
-//       Eigen::MatrixXd traj(path.size(), 3);
-//       for(int i = 0; i < path.size(); ++i)
-//         for(int j = 0; j < 3; ++j)
-//           traj(i, j) = path[i][j];
-//       dataArray.push_back(traj);
-//     }
+//     // interpolate orientations w.r.t layer
+//     directionField[i] = {directions(i, 0), directions(i, 1)};
+//     // express vectors in their respective vertex local bases (the stripes algorithm expects that)
+//     auto basisVector = geometryUV.vertexTangentBasis[i][0];
+//     Vector2 base{basisVector.x, basisVector.y};
+//     directionField[i] = -directionField[i].pow(2) / base.pow(2);
 //   }
-//   return dataArray;
+
+//   const auto& [stripeValues, stripeIndices, fieldIndices] = computeStripePattern(geometryUV, frequencies, directionField);
+//   const auto& [vertices, edges] = extractPolylinesFromStripePattern(geometryUV, stripeValues, stripeIndices, fieldIndices, directionField, true);
+
+//   auto polylines = edgeToPolyline(vertices, edges);
+//   polylines = orderPolylines(polylines);
+//   return simplifyPolylines(polylines);
 // }
 
 struct StripeAlgo
@@ -278,19 +280,17 @@ Eigen::VectorXd vertexBasedStretchAngles(const nb::DRef<Eigen::MatrixXd>& V,
   Eigen::VectorXd vertexAngles(V.rows());
   for(int i = 0; i < V.rows(); ++i)
   {
-    double sumAngles = 0;
-    int nFaces = 0;
+    Vector2 direction = {0, 0};
     Vertex v = mesh.vertex(i);
     for(Face f: v.adjacentFaces())
     {
-      // add face orientations in global coordinates
       if(!f.isBoundaryLoop())
       {
-        sumAngles += theta1[f];
-        nFaces += 1;
+        direction += Vector2::fromAngle(2 * theta1[f]);
       }
     }
-    vertexAngles(i) = sumAngles / nFaces;
+    direction = direction.normalize().pow(0.5);
+    vertexAngles(i) = direction.arg();
   }
 
   return vertexAngles;

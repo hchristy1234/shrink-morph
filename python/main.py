@@ -15,9 +15,8 @@ class ShrinkMorph:
   lambda1 = 0.6912916667
   lambda2 = 1.055333333
   gradient = 0
-  wD = 1e-5
+  wD = 2e-5
   E1 = 10
-  thickness_sim = 1.218
   # deltaLambda = 0.0226764665509417
   n_layers = 8
   lim = 1e-6
@@ -26,11 +25,12 @@ class ShrinkMorph:
   wM = 0.01
   wL = 0.01
   thickness = 0.8
+  thickness_sim = thickness / lambda1
   num_rectangles = 3
   rect_length = 80
   rect_width = 20
   with_smoothing = False
-  printer_profile = "Prusa_MK3S"
+  printer_profile = "Bambulab_P1S"
   printers_list = [
     'Anet_A8', 
     'Anycubic_Mega_Zero',
@@ -171,6 +171,18 @@ class ShrinkMorph:
       self.leave = False
       self.calibrate = True
       ps.unshow()
+
+    # if gui.Button("Test"):
+    #   # V, P, F, theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, 0 * self.angles, 0.8)
+    #   theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
+    #   self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
+    #   trajectories = self.stripe.generate_one_layer(self.P, self.F, theta1, 0 * theta1, self.printer.layer_height, self.printer.nozzle_width, 10, 0)
+    #   # dirs = shrink_morph_py.vertex_based_stretch_vectors(V, P, F)
+    #   # trajectories = shrink_morph_py.generate_trajectories(P, F, dirs, 0.4)
+    #   nodes, edges = self.convert_trajectories(trajectories)
+    #   ps_traj = ps.register_curve_network("Test", nodes, edges, enabled=True, radius=0.2)
+    #   ps_traj.set_radius(0.2, relative=False)
+    #   ps_traj.set_color((0.3, 0.6, 0.8))
   
   def show(self):
     ps.set_give_focus_on_show(True)
@@ -280,7 +292,7 @@ class ShrinkMorph:
     self.V, self.P, self.F, self.theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, self.theta2, target_edge_length)
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
-    self.n_layers = int(self.thickness / self.printer.layer_height)
+    self.n_layers = round(self.thickness / self.printer.layer_height)
     layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
     nodes, edges = self.convert_trajectories(layer)
 
@@ -307,11 +319,11 @@ class ShrinkMorph:
     self.display_buildplate()
     x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
     step_size = self.rect_width
-    build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
-    build_face = np.empty(shape=(int(self.num_rectangles), 4))
+    build_vert = np.empty(shape=(self.num_rectangles*4, 3))
+    build_face = np.empty(shape=(self.num_rectangles, 4))
     y_bottom = -self.rect_length / 2
     y_top = self.rect_length / 2
-    for i in range(int(self.num_rectangles)):
+    for i in range(self.num_rectangles):
       build_vert[i*4] = [x_start, y_bottom, 0.1]
       build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
       build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
@@ -354,11 +366,11 @@ class ShrinkMorph:
     if changed_1 or changed_2 or changed_3 or changed_4:
       x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
       step_size = self.rect_width
-      build_vert = np.empty(shape=(int(self.num_rectangles*4), 3))
-      build_face = np.empty(shape=(int(self.num_rectangles), 4))
+      build_vert = np.empty(shape=(self.num_rectangles*4, 3))
+      build_face = np.empty(shape=(self.num_rectangles, 4))
       y_bottom = -self.rect_length / 2
       y_top = self.rect_length / 2
-      for i in range(int(self.num_rectangles)):
+      for i in range(self.num_rectangles):
         build_vert[i*4] = [x_start, y_bottom, 0.1]
         build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
         build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]

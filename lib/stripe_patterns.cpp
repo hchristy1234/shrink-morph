@@ -1,6 +1,7 @@
 #include "stripe_patterns.h"
 
 #include "geometrycentral/surface/direction_fields.h"
+#include "geometrycentral/numerical/linear_solvers.h"
 
 using namespace geometrycentral;
 using namespace geometrycentral::surface;
@@ -45,6 +46,32 @@ double computeOmega(IntrinsicGeometryInterface& geometry,
 
   return omegaIJ;
 }
+
+
+// Solve the generalized eigenvalue problem in equation 9 [Knoppel et al. 2015]
+VertexData<Vector2> computeParameterization(IntrinsicGeometryInterface& geometry,
+                                            const VertexData<Vector2>& directionField,
+                                            const FaceData<int>& branchIndices, const VertexData<double>& frequencies) {
+
+  SurfaceMesh& mesh = geometry.mesh;
+
+  // Compute vertex energy matrix A and mass matrix B
+  SparseMatrix<double> energyMatrix = buildVertexEnergyMatrix(geometry, directionField, branchIndices, frequencies);
+  SparseMatrix<double> massMatrix = computeRealVertexMassMatrix(geometry);
+
+  // Find the smallest eigenvector
+  Vector<double> solution = smallestEigenvectorPositiveDefinite(energyMatrix, massMatrix, 20);
+
+  // Copy the result to a VertexData vector
+  VertexData<Vector2> toReturn(mesh);
+  for (size_t i = 0; i < mesh.nVertices(); ++i) {
+    toReturn[i].x = solution(2 * i);
+    toReturn[i].y = solution(2 * i + 1);
+    toReturn[i] = toReturn[i].normalize();
+  }
+  return toReturn;
+}
+
 } // namespace
 
 // Build a Laplace-like matrix with double entries (necessary to represent complex conjugation)
@@ -580,4 +607,24 @@ extractPolylinesFromStripePattern(EmbeddedGeometryInterface& geometry,
   }
 
   return std::make_tuple(points, edges);
+}
+
+
+std::tuple<CornerData<double>, FaceData<int>, FaceData<int>>
+computeStripePattern(IntrinsicGeometryInterface& geometry, const VertexData<double>& frequencies,
+                     const VertexData<Vector2>& directionField) {
+  // find singularities of the direction field
+  FaceData<int> branchIndices = computeFaceIndex(geometry, directionField, 2);
+
+  // solve the eigenvalue problem (multiply by 2pi to get the right frequencies)
+  VertexData<Vector2> parameterization =
+      computeParameterization(geometry, directionField, branchIndices, 2 * PI * frequencies);
+
+  // compute the final corner-based values, along with singularities of the stripe pattern
+  CornerData<double> textureCoordinates;
+  FaceData<int> zeroIndices;
+  std::tie(textureCoordinates, zeroIndices) =
+      computeTextureCoordinates(geometry, directionField, 2 * PI * frequencies, parameterization);
+
+  return std::tie(textureCoordinates, zeroIndices, branchIndices);
 }
