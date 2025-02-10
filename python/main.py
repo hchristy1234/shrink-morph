@@ -317,19 +317,19 @@ class ShrinkMorph:
     ps.remove_all_structures()
 
     self.display_buildplate()
-    x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
+    spacing = 6
+    x_start = -(4 * (self.rect_width+0.1))//2
     step_size = self.rect_width
     build_vert = np.empty(shape=(self.num_rectangles*4, 3))
     build_face = np.empty(shape=(self.num_rectangles, 4))
-    y_bottom = -self.rect_length / 2
-    y_top = self.rect_length / 2
+    y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
     for i in range(self.num_rectangles):
-      build_vert[i*4] = [x_start, y_bottom, 0.1]
-      build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
-      build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
-      build_vert[i*4+3] =  [x_start, y_top, 0.1]
+      build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
+      build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
+      build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
+      build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
       build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-      x_start += step_size + 0.05
+      y_bottom += step_size + spacing  # Move upwards for the next rectangle
     ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
 
     ps.set_user_callback(self.callback_calibrate)
@@ -364,19 +364,21 @@ class ShrinkMorph:
     changed_4, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
 
     if changed_1 or changed_2 or changed_3 or changed_4:
-      x_start = -(self.num_rectangles * (self.rect_width+0.1))//2
+      x_start = -(4 * (self.rect_width+0.1))//2
       step_size = self.rect_width
+      spacing = 6
       build_vert = np.empty(shape=(self.num_rectangles*4, 3))
       build_face = np.empty(shape=(self.num_rectangles, 4))
-      y_bottom = -self.rect_length / 2
-      y_top = self.rect_length / 2
+      y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
       for i in range(self.num_rectangles):
-        build_vert[i*4] = [x_start, y_bottom, 0.1]
-        build_vert[i*4+1] = [x_start+step_size, y_bottom, 0.1]
-        build_vert[i*4+2] = [x_start+step_size, y_top, 0.1]
-        build_vert[i*4+3] =  [x_start, y_top, 0.1]
+        build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
+        build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
+        build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
+        build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
         build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-        x_start += step_size + 0.1
+        y_bottom += step_size + spacing  # Move upwards for the next rectangle
+        print(self.rect_length)
+        print(self.rect_width)
 
       ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
 
