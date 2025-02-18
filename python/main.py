@@ -344,26 +344,32 @@ class ShrinkMorph:
     ps.set_user_callback(self.callback_traj)
     ps.reset_camera_to_home_view()
     ps.show()
+
+  spacing = 6
+  def display_rectangles(self):
+    # rectangle shape
+    rect_verts = np.array([[-0.5, -0.5, 0.1], [0.5, -0.5, 0.1], [0.5, 0.5, 0.1], [-0.5, 0.5, 0.1]])
+    rect_verts[:, 0] *= self.rect_length
+    rect_verts[:, 1] *= self.rect_width
+
+    # build verts
+    total_width = (self.num_rectangles - 1) * (self.rect_width + self.spacing)
+    posY = np.linspace(start=-total_width / 2, stop=+total_width / 2, num=self.num_rectangles)
+    build_verts = np.tile(rect_verts, (self.num_rectangles, 1))
+    build_verts[:, 1] += np.repeat(posY, 4)
+
+    # build face
+    build_face = np.arange(4 * self.num_rectangles).reshape((self.num_rectangles, 4))
+
+    ps.register_surface_mesh("Rectangles", build_verts, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+
   
   def calibrate_screen(self):
     self.leave = True
     ps.remove_all_structures()
 
     self.display_buildplate()
-    spacing = 6
-    x_start = -(4 * (self.rect_width+0.1))//2
-    step_size = self.rect_width
-    build_vert = np.empty(shape=(self.num_rectangles*4, 3))
-    build_face = np.empty(shape=(self.num_rectangles, 4))
-    y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
-    for i in range(self.num_rectangles):
-      build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
-      build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
-      build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
-      build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
-      build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-      y_bottom += step_size + spacing  # Move upwards for the next rectangle
-    ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+    self.display_rectangles()
 
     ps.set_user_callback(self.callback_calibrate)
     ps.reset_camera_to_home_view()
@@ -392,29 +398,13 @@ class ShrinkMorph:
     gui.PushItemWidth(100)
 
     changed_1, self.num_rectangles = gui.InputInt("Number of Rectangles", self.num_rectangles, step=1)
-    changed_2, self.thickness = gui.InputDouble("Total thickness", self.thickness, format="%.2f")    
-    changed_3, self.rect_width = gui.DragFloat("Rectangle width (mm)", self.rect_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
-    changed_4, self.rect_length = gui.DragFloat("Rectangle length (mm)", self.rect_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+    changed_2, self.rect_width = gui.SliderFloat("Rectangle width (mm)", self.rect_width, v_min=5, v_max=(self.printer.bed_size[1]) / self.num_rectangles - self.spacing, format="%.0f")
+    changed_3, self.rect_length = gui.SliderFloat("Rectangle length (mm)", self.rect_length, v_min=5, v_max=self.printer.bed_size[0] - self.spacing, format="%.0f")
 
-    if changed_1 or changed_2 or changed_3 or changed_4:
-      x_start = -(4 * (self.rect_width+0.1))//2
-      step_size = self.rect_width
-      spacing = 6
-      build_vert = np.empty(shape=(self.num_rectangles*4, 3))
-      build_face = np.empty(shape=(self.num_rectangles, 4))
-      y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
-      for i in range(self.num_rectangles):
-        build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
-        build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
-        build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
-        build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
-        build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-        y_bottom += step_size + spacing  # Move upwards for the next rectangle
-        print(self.rect_length)
-        print(self.rect_width)
-
-      ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
-
+    if changed_1 or changed_2 or changed_3:
+      self.display_rectangles()
+    
+    _, self.thickness = gui.InputDouble("Total thickness", self.thickness, format="%.2f")    
     _, self.printer.layer_height = gui.InputDouble("Layer Height", self.printer.layer_height, format="%.2f")
     _, self.printer.bed_temp = gui.InputDouble("Bed temperature", self.printer.bed_temp, format="%.0f")
     _, self.printer.extruder_temp = gui.InputDouble("Nozzle temperature", self.printer.extruder_temp, format="%.0f")
@@ -481,8 +471,9 @@ class ShrinkMorph:
       print(self.rect_length)
       print(self.rect_width)
 
+    gui.PushItemWidth(100)
     ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
-    _, self.flattest_print = gui.InputInt("Select the flattest print", self.flattest_print, step=1)
+    _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
     _, self.calibrated_width = gui.DragFloat("New width (mm)", self.calibrated_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
     _, self.calibrated_length = gui.DragFloat("New length (mm)", self.calibrated_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
     
@@ -492,7 +483,6 @@ class ShrinkMorph:
       ps.remove_all_structures()
       ps.unshow()
 
-    gui.PushItemWidth(100)
 
   def convert_trajectories(self, trajectories):
     nodes = trajectories[0]
