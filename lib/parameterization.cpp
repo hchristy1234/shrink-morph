@@ -107,20 +107,13 @@ void parameterization(const Eigen::MatrixXd& V,
                       double lambda2,
                       double wD,
                       int n_iter,
-                      double lim)
+                      double lim,
+                      const std::vector<int>& fixedIdx)
 {
   using namespace geometrycentral;
   using namespace geometrycentral::surface;
 
-  LocalGlobalSolver solver(V, F);
-
-  // run Local-Global algorithm
-  solver.solve(P, 1 / lambda2, 1 / lambda1);
-
-  // Repeat center and rotate operations
-  centerAndRotate(V, P);
-
-  if(wD > 0) // smoothing
+  // if(wD > 0) // smoothing
   {
     std::cout << "*********\nSMOOTHING\n*********\n";
 
@@ -130,7 +123,7 @@ void parameterization(const Eigen::MatrixXd& V,
     auto func = parameterizationFunction(geometry, wD, lambda1, lambda2);
 
     // optimize the parameterization function with Newton's method
-    newton(geometry, P, func, n_iter, lim);
+    newton(geometry, P, func, n_iter, lim, true, fixedIdx);
   }
 }
 
@@ -140,7 +133,8 @@ Eigen::MatrixXd parameterization(const Eigen::MatrixXd& V,
                                  double lambda2,
                                  double wD,
                                  int n_iter,
-                                 double lim)
+                                 double lim,
+                                 const std::vector<int>& fixedIdx)
 {
   using namespace Eigen;
   Timer paramTimer("Parameterization");
@@ -167,7 +161,15 @@ Eigen::MatrixXd parameterization(const Eigen::MatrixXd& V,
   // restore F with holes
   F.conservativeResize(nF, 3);
 
-  parameterization(V, P, F, lambda1, lambda2, wD, n_iter, lim);
+  // LocalGlobalSolver solver(V, F);
+
+  // run Local-Global algorithm
+  solver.solve(P, 1 / lambda2, 1 / lambda1);
+
+  // Repeat center and rotate operations
+  centerAndRotate(V, P);
+
+  parameterization(V, P, F, lambda1, lambda2, wD, n_iter, lim, fixedIdx);
   return P;
 }
 

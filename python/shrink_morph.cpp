@@ -307,10 +307,10 @@ NB_MODULE(shrink_morph_py, m)
            int n_iter, double lim) { return parameterization(V, F, lambda1, lambda2, wD, n_iter, lim); });
   m.def("reparameterization",
         [](const nb::DRef<Eigen::MatrixXd>& V, Eigen::MatrixXd& P, const nb::DRef<Eigen::MatrixXi>& F, double lambda1,
-           double lambda2, double wD, int n_iter, double lim) {
-          parameterization(V, P, F, lambda1, lambda2, wD, n_iter, lim);
+           double lambda2, double wD, int n_iter, double lim, const std::vector<int>& fixedIdx = {}) {
+          parameterization(V, P, F, lambda1, lambda2, wD, n_iter, lim, fixedIdx);
           return P;
-        });
+        }, "V"_a, "P"_a, "F"_a, "lambda1"_a, "lambda2"_a, "wD"_a, "n_iter"_a, "lim"_a, "fixedIdx"_a = std::vector<int>{});
   m.def("simulation", &simulation);
   m.def("directions_optimization", &directionsOptimization);
   // m.def("generate_trajectories", &generateTrajectories);

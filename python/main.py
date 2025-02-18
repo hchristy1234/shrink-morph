@@ -109,6 +109,25 @@ class ShrinkMorph:
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
+    if gui.Button("Force mirror symmetry"):
+      self.P = shrink_morph_py.parameterization(self.V, self.F, 1, 1, 0, self.n_iter, self.lim)
+      self.P[:, 0] /= self.lambda1
+      self.P[:, 1] /= self.lambda2
+
+      indices = []
+      for i in range(self.P.shape[0]):
+        if np.abs(self.P[i, 1]) < 1e-3:
+          self.P[i, 1] = 0
+          indices.append(2 * i + 1)
+
+      self.P = shrink_morph_py.reparameterization(self.V, self.P, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim, indices)
+
+      ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+      sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+
 
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
     if changed:
@@ -452,10 +471,7 @@ class ShrinkMorph:
           self.printer = togcode.Printer(self.printer_profile)
           self.display_buildplate()
       gui.EndCombo()
-    gui.PopItemWidth()
 
-
-    gui.PushItemWidth(200)
     changed, self.layer_id = gui.SliderInt("Layer", self.layer_id, 1, self.curr_layer)
     if changed:
       for i in range(1, self.n_layers + 1):

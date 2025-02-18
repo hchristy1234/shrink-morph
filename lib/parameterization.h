@@ -17,7 +17,8 @@ Eigen::MatrixXd parameterization(const Eigen::MatrixXd& V,
                                  double lambda2,
                                  double wD = 0,
                                  int n_iter = 1000,
-                                 double lim = 1e-6);
+                                 double lim = 1e-6,
+                                 const std::vector<int>& fixedIdx = {});
 
 void parameterization(const Eigen::MatrixXd& V,
                       Eigen::MatrixXd& P,
@@ -26,7 +27,8 @@ void parameterization(const Eigen::MatrixXd& V,
                       double lambda2,
                       double wD,
                       int n_iter,
-                      double lim);
+                      double lim,
+                      const std::vector<int>& fixedIdx = {});
 
 geometrycentral::surface::FaceData<Eigen::Matrix2d>
 precomputeParamData(geometrycentral::surface::VertexPositionGeometry& geometry);
