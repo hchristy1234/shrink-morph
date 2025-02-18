@@ -23,7 +23,6 @@ class ShrinkMorph:
   n_layers = 8
   lim = 1e-6
   n_iter = 1000
-  flattest_print = 1
   width = 200
   wM = 0.01
   wL = 0.01
@@ -438,19 +437,22 @@ class ShrinkMorph:
 
   delta = 0.005
   
+  flattest_print = 1
+  measured_width = 0
+  measured_length = 0
   def callback_after_calibrate(self):
     gui.PushItemWidth(100)
-    _, flattest_print = gui.SliderInt("Select the flattest print", flattest_print, v_min=1, v_max=self.num_rectangles)
-    _, measured_width = gui.InputDouble("Input measured width (mm)", measured_width, 0, 0, "%.1f")
-    _, measured_length = gui.InputDouble("Input measured length (mm)", measured_length, 0, 0, "%.1f")
+    _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
+    _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
+    _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
 
-    # Internal logic
-    self.lambda1 = measured_length / self.rect_length
-    self.lambda2 = measured_width / self.rect_width
-    self.lambda3 = 1 / self.lambda1
-    self.gradient = (flattest_print - (self.num_rectangles - 1) / 2) * self.deta
-    
     if gui.Button("Confirm"):
+      # Internal logic
+      self.lambda1 = self.measured_length / self.rect_length
+      self.lambda2 = self.measured_width / self.rect_width
+      self.lambda3 = 1 / self.lambda1
+      self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
+      
       self.leave = False
       ps.reset_camera_to_home_view()
       ps.remove_all_structures()
