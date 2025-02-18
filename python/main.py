@@ -7,6 +7,7 @@ import tkinter as tk
 from tkinter import filedialog
 import os
 import sys
+import threading
 
 root = tk.Tk()
 root.withdraw()
@@ -21,6 +22,7 @@ class ShrinkMorph:
   n_layers = 8
   lim = 1e-6
   n_iter = 1000
+  flattest_print = 0
   width = 200
   wM = 0.01
   wL = 0.01
@@ -71,6 +73,9 @@ class ShrinkMorph:
   # GUI variables
   leave = True
   calibrate = False
+  in_calibration_loop = False
+  file_selected = False
+  file_not_select_error = False
 
   # Display printer buildplate
   def display_buildplate(self):
@@ -108,6 +113,9 @@ class ShrinkMorph:
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
       ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+
+      self.file_selected = True
+      self.file_not_select_error = False
 
 
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
@@ -163,13 +171,23 @@ class ShrinkMorph:
       changed, self.lim = gui.InputDouble("Limit", self.lim, 0, 0, "%.1e")
       gui.TreePop()
 
+    if self.file_not_select_error:
+      gui.TextColored((1.0, 0.2, 0.2, 1.0), 
+                "(ERROR) No file selected. Please select a file before proceeding.")
+
     if gui.Button("Next"):
-      self.leave = False
-      ps.unshow()
+      if not self.file_selected:
+        self.file_not_select_error = True
+      else:
+        self.leave = False
+        self.in_calibration_loop = False
+        ps.unshow()
+      return
 
     if gui.Button("Calibrate"):
       self.leave = False
       self.calibrate = True
+      self.in_calibration_loop = True
       ps.unshow()
 
     # if gui.Button("Test"):
@@ -197,13 +215,26 @@ class ShrinkMorph:
     # self.F = F
 
     self.param_screen()
+    while self.in_calibration_loop:
+
+      if self.leave:
+        return
+      
+      if self.calibrate:
+        print("calibrate")
+        self.calibrate_screen()
+
+      if self.leave:
+        return
+
+      self.after_calibrate_screen()
+
+      if self.leave:
+        return
+
+      self.param_screen()
 
     if self.leave:
-      return
-    
-    if self.calibrate:
-      print("calibrate")
-      self.calibrate_screen()
       return
 
     self.optim_screen()
@@ -394,10 +425,70 @@ class ShrinkMorph:
       layer_height = self.printer.layer_height
       self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width, self.delta)
       self.printer.layer_height = layer_height
+    if gui.Button("Finished Calibration"):
+      self.leave = False
+      ps.unshow()
+
     # if gui.Button("Back"):
     #     self.calibrate = False
     #     ps.unshow()
     #     self.param_screen()
+  def after_calibrate_screen(self):
+    self.leave = True
+    ps.remove_all_structures()
+
+    self.display_buildplate()
+    spacing = 6
+    ps.set_user_callback(self.callback_after_calibrate)
+    ps.reset_camera_to_home_view()
+    ps.show()
+
+  delta = 0.005
+  
+  def callback_after_calibrate(self):
+    gui.PushItemWidth(200)
+    #self.display_buildplate()
+
+    changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
+    if changed:
+      for val in self.printers_list:
+        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
+        if selected:
+          self.printer_profile = val
+          self.printer = togcode.Printer(self.printer_profile)
+          build_vert = np.array([[-1,-1,-0.1], [1, -1, -0.1], [1, 1, -0.1], [-1, 1, -0.1]])
+          build_vert[:, 0] *= self.printer.bed_size[0] / 2
+          build_vert[:, 1] *= self.printer.bed_size[1] / 2
+          ps.get_surface_mesh("Buildplate").update_vertex_positions(build_vert)
+      gui.EndCombo()
+    gui.PopItemWidth()
+
+    x_start = -(4 * (self.rect_width+0.1))//2
+    step_size = self.rect_width
+    spacing = 6
+    build_vert = np.empty(shape=(self.num_rectangles*4, 3))
+    build_face = np.empty(shape=(self.num_rectangles, 4))
+    y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
+    for i in range(self.num_rectangles):
+      build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
+      build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
+      build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
+      build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
+      build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
+      y_bottom += step_size + spacing  # Move upwards for the next rectangle
+      print(self.rect_length)
+      print(self.rect_width)
+
+    ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
+    changed, self.flattest_print = gui.InputInt("Select the flattest print", self.flattest_print, step=1)
+    
+    if gui.Button("Confirm"):
+      self.leave = False
+      ps.reset_camera_to_home_view()
+      ps.remove_all_structures()
+      ps.unshow()
+
+    gui.PushItemWidth(100)
 
   def convert_trajectories(self, trajectories):
     nodes = trajectories[0]
