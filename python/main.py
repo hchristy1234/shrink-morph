@@ -15,6 +15,7 @@ root.withdraw()
 class ShrinkMorph:
   lambda1 = 0.6912916667
   lambda2 = 1.055333333
+  lambda3 = 1 / lambda1
   gradient = 0
   wD = 2e-5
   E1 = 10
@@ -22,12 +23,12 @@ class ShrinkMorph:
   n_layers = 8
   lim = 1e-6
   n_iter = 1000
-  flattest_print = 0
+  flattest_print = 1
   width = 200
   wM = 0.01
   wL = 0.01
   thickness = 0.8
-  thickness_sim = thickness / lambda1
+  # thickness_sim = thickness * lambda3
   num_rectangles = 3
   rect_length = 80
   rect_width = 20
@@ -167,7 +168,7 @@ class ShrinkMorph:
     if gui.TreeNode("Advanced"):
       changed, self.lambda1 = gui.InputDouble("lambda1", self.lambda1, 0, 0, "%.2f")
       changed, self.lambda2 = gui.InputDouble("lambda2", self.lambda2, 0, 0, "%.2f")
-      changed, self.thickness_sim = gui.InputDouble("Thickness", self.thickness_sim, 0, 0, "%.2f")
+      # changed, self.thickness_sim = gui.InputDouble("Thickness", self.thickness_sim, 0, 0, "%.2f")
       _, self.gradient = gui.InputDouble("Layer height delta", self.gradient, format="%.3f")
       changed, self.n_iter = gui.InputInt("Iterations", self.n_iter, step=1)
       changed, self.lim = gui.InputDouble("Limit", self.lim, 0, 0, "%.1e")
@@ -223,7 +224,6 @@ class ShrinkMorph:
         return
       
       if self.calibrate:
-        print("calibrate")
         self.calibrate_screen()
 
       if self.leave:
@@ -256,7 +256,7 @@ class ShrinkMorph:
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
-    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness_sim)
+    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
 
     ps.set_user_callback(self.callback_optim)
     ps.reset_camera_to_home_view()
@@ -417,7 +417,7 @@ class ShrinkMorph:
       layer_height = self.printer.layer_height
       self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width, self.delta)
       self.printer.layer_height = layer_height
-    if gui.Button("Finished Calibration"):
+    if gui.Button("Finish Calibration"):
       self.leave = False
       ps.unshow()
 
@@ -430,7 +430,8 @@ class ShrinkMorph:
     ps.remove_all_structures()
 
     self.display_buildplate()
-    spacing = 6
+    self.display_rectangles()
+    
     ps.set_user_callback(self.callback_after_calibrate)
     ps.reset_camera_to_home_view()
     ps.show()
@@ -438,44 +439,16 @@ class ShrinkMorph:
   delta = 0.005
   
   def callback_after_calibrate(self):
-    gui.PushItemWidth(200)
-    #self.display_buildplate()
-
-    changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
-    if changed:
-      for val in self.printers_list:
-        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
-        if selected:
-          self.printer_profile = val
-          self.printer = togcode.Printer(self.printer_profile)
-          build_vert = np.array([[-1,-1,-0.1], [1, -1, -0.1], [1, 1, -0.1], [-1, 1, -0.1]])
-          build_vert[:, 0] *= self.printer.bed_size[0] / 2
-          build_vert[:, 1] *= self.printer.bed_size[1] / 2
-          ps.get_surface_mesh("Buildplate").update_vertex_positions(build_vert)
-      gui.EndCombo()
-    gui.PopItemWidth()
-
-    x_start = -(4 * (self.rect_width+0.1))//2
-    step_size = self.rect_width
-    spacing = 6
-    build_vert = np.empty(shape=(self.num_rectangles*4, 3))
-    build_face = np.empty(shape=(self.num_rectangles, 4))
-    y_bottom = -(self.rect_width+spacing) * (self.num_rectangles/2)
-    for i in range(self.num_rectangles):
-      build_vert[i*4] = [x_start, y_bottom, 0.1]  # Bottom-left
-      build_vert[i*4+1] = [x_start, y_bottom+step_size, 0.1]  # Bottom-right
-      build_vert[i*4+2] = [x_start+self.rect_length, y_bottom+step_size, 0.1]  # Top-right
-      build_vert[i*4+3] = [x_start+self.rect_length, y_bottom, 0.1]  # Top-left
-      build_face[i] = [i*4, i*4+1, i*4+2, i*4+3]
-      y_bottom += step_size + spacing  # Move upwards for the next rectangle
-      print(self.rect_length)
-      print(self.rect_width)
-
     gui.PushItemWidth(100)
-    ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
-    _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
-    _, self.calibrated_width = gui.DragFloat("New width (mm)", self.calibrated_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
-    _, self.calibrated_length = gui.DragFloat("New length (mm)", self.calibrated_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
+    _, flattest_print = gui.SliderInt("Select the flattest print", flattest_print, v_min=1, v_max=self.num_rectangles)
+    _, measured_width = gui.InputDouble("Input measured width (mm)", measured_width, 0, 0, "%.1f")
+    _, measured_length = gui.InputDouble("Input measured length (mm)", measured_length, 0, 0, "%.1f")
+
+    # Internal logic
+    self.lambda1 = measured_length / self.rect_length
+    self.lambda2 = measured_width / self.rect_width
+    self.lambda3 = 1 / self.lambda1
+    self.gradient = (flattest_print - (self.num_rectangles - 1) / 2) * self.deta
     
     if gui.Button("Confirm"):
       self.leave = False
