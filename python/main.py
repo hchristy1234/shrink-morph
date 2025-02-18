@@ -31,6 +31,8 @@ class ShrinkMorph:
   num_rectangles = 3
   rect_length = 80
   rect_width = 20
+  calibrated_length = 80
+  calibrated_width = 20
   with_smoothing = False
   printer_profile = "Bambulab_P1S"
   printers_list = [
@@ -480,7 +482,9 @@ class ShrinkMorph:
       print(self.rect_width)
 
     ps.register_surface_mesh("Rectangles", build_vert, build_face, color=(0.6, 0.6, 0.3), edge_width=5, edge_color=(0.8, 0.8, 0.8), material="flat")
-    changed, self.flattest_print = gui.InputInt("Select the flattest print", self.flattest_print, step=1)
+    _, self.flattest_print = gui.InputInt("Select the flattest print", self.flattest_print, step=1)
+    _, self.calibrated_width = gui.DragFloat("New width (mm)", self.calibrated_width, 1, 1, (self.printer.bed_size[1] + 10) / self.num_rectangles - 20, "%.0f")
+    _, self.calibrated_length = gui.DragFloat("New length (mm)", self.calibrated_length, 1, 1, self.printer.bed_size[0] - 20, "%.0f")
     
     if gui.Button("Confirm"):
       self.leave = False
