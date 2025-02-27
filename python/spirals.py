@@ -4,7 +4,7 @@ import polyscope as ps
 import polyscope.imgui as gui
 import togcode
 from tkinter import filedialog
-filename = filedialog.asksaveasfilename(defaultextension='.gcode')
+import triangle as tr
 
 def display_trajectories(nodes, edges):
   ps_traj = ps.register_curve_network("Layer", nodes, edges, enabled=True, radius=printer.nozzle_width / 2)
@@ -34,25 +34,43 @@ printer.layer_height = 0.2
 
 lambda1 = 1
 lambda2 = 0.98
-radius = 20
+outer_radius = 20
+inner_radius = 1
 thickness = 0.4
-angle = 0
+angle = 45
 
-P, F = shrink_morph_py.read_from_OBJ("data/hemisphere.obj")
-P[:,1] = P[:,2].copy()
-P[:,2] *= 0
-P *= radius / (np.max(P) - np.min(P))
+n_circle = 100
+vertices = []
+segments = []
+holes = []
+
+def make_circle(radius):
+  n = len(vertices)
+  for i in range(n_circle):
+    vertices.append([radius * np.cos(2 * i / n_circle * np.pi), radius * np.sin(2 * i / n_circle * np.pi)])
+    segments.append([n + i, n + ((i + 1) % n_circle)])
+
+make_circle(outer_radius)
+make_circle(inner_radius)
 
 
-ps.set_give_focus_on_show(True)
+A = dict(vertices=vertices, segments=segments, holes=[[0,0]])
+B = tr.triangulate(A, 'pqa0.1')
+
+# Initialize polyscope
 ps.init()
+ps.set_give_focus_on_show(True)
 ps.set_ground_plane_mode("shadow_only")
+
+zeros = np.zeros((len(B['vertices']), 1))
+P = np.hstack((np.array(B['vertices']), zeros))
+F = np.array(B['triangles'])
 ps.register_surface_mesh("Parameterization", P, F, edge_width=1, color=(42/255, 53/255, 213/255))
 
 
 theta = np.empty(P.shape[0])
 def callback():
-  global thickness, radius, angle, lambda2, P, trajectories, printer
+  global thickness, outer_radius, angle, lambda2, P, trajectories, printer
 
   gui.PushItemWidth(50)
   _, printer.nozzle_width = gui.InputDouble("Nozzle width (mm)", printer.nozzle_width, format="%.2f")    
@@ -63,11 +81,11 @@ def callback():
   _, printer.bed_temp = gui.InputDouble("Bed temperature (ºC)", printer.bed_temp, format="%.0f")
   _, printer.extruder_temp = gui.InputDouble("Nozzle temperature (ºC)", printer.extruder_temp, format="%.0f")
   _, lambda2 = gui.InputDouble("Shrinking ratio", lambda2, format="%.2f")
-  changed, radius = gui.DragFloat("Radius (mm)", radius, 1, 1, 100, "%.0f")
-  if changed and radius > 0:
-    P *= radius / (np.max(P) - np.min(P))
+  changed, outer_radius = gui.DragFloat("Outer radius (mm)", outer_radius, 1, 1, 100, "%.0f")
+  if changed and outer_radius > 0:
+    P *= outer_radius / (np.max(P) - np.min(P))
     ps.get_surface_mesh("Parameterization").update_vertex_positions(P)
-  _, angle = gui.DragFloat("Spiral pitch angle (degrees)", angle, 1, 0, 360, "%.2f")
+  _, angle = gui.DragFloat("Spiral pitch angle (degrees)", angle, 1, 0, 90, "%.2f")
 
   if gui.Button("Generate spiral pattern"):
     theta = np.arctan2(P[:, 1], P[:, 0])
@@ -84,8 +102,8 @@ def callback():
       curr_layer = []
       for j in range(len(layer)):
         # rotate wrt previous layer
-        s = printer.nozzle_width / radius
-        c = 1 - (printer.nozzle_width / radius)**2 / 2
+        s = printer.nozzle_width / outer_radius
+        c = 1 - (printer.nozzle_width / outer_radius)**2 / 2
         rotation_matrix = np.array([[c, -s], [s, c]])
         res = rotation_matrix.dot(layer[j].T)
         layer[j] = res.T
@@ -95,8 +113,9 @@ def callback():
 
 
   if gui.Button("Export gcode"):
-    filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-    printer.to_gcode(trajectories, filename, variable_layer_height=True)
+    # filename = filedialog.asksaveasfilename(defaultextension='.gcode')
+    # printer.to_gcode(trajectories, filename, variable_layer_height=True)
+    printer.to_gcode(trajectories, "output.gcode", variable_layer_height=True)
 
 
 

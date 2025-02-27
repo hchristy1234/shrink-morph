@@ -1,0 +1,36 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "default",
+      "displayName": "Custom configure preset",
+      "description": "Sets Ninja generator, build and install directory",
+      "generator": "Ninja Multi-Config",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_CONFIGURATION_TYPES": "Debug;Release",
+        "CMAKE_C_COMPILER": "/opt/homebrew/opt/llvm/bin/clang",
+        "CMAKE_CXX_COMPILER": "/opt/homebrew/opt/llvm/bin/clang++",
+        "PYTHON_BINDINGS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "configurePreset": "default",
+      "configuration": "Debug",
+      "targets": ["install"],
+      "jobs": 10
+    },
+    {
+      "name": "release",
+      "displayName": "Release",
+      "configurePreset": "default",
+      "configuration": "Release",
+      "targets": ["install"],
+      "jobs": 10
+    }
+  ]
+}
