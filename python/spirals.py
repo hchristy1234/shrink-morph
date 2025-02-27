@@ -102,8 +102,8 @@ def callback():
       curr_layer = []
       for j in range(len(layer)):
         # rotate wrt previous layer
-        s = printer.nozzle_width / outer_radius
-        c = 1 - (printer.nozzle_width / outer_radius)**2 / 2
+        s = 2 * printer.nozzle_width / outer_radius
+        c = 1 - (2 * printer.nozzle_width / outer_radius)**2 / 2
         rotation_matrix = np.array([[c, -s], [s, c]])
         res = rotation_matrix.dot(layer[j].T)
         layer[j] = res.T
