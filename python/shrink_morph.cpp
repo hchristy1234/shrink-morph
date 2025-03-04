@@ -95,23 +95,17 @@ subdivide(const nb::DRef<Eigen::MatrixXd>& V,
 void simulation(nb::DRef<Eigen::MatrixXd> V,
                 nb::DRef<Eigen::MatrixXd> P,
                 const nb::DRef<Eigen::MatrixXi>& F,
-                const nb::DRef<Eigen::VectorXd>& theta2,
+                const nb::DRef<Eigen::VectorXd>& theta,
                 double E1,
                 double lambda1,
                 double lambda2,
-                // double deltaLambda,
                 double thickness,
-                double width,
                 int n_iter,
                 double lim)
 {
   Timer timer("Simulation");
 
   using namespace geometrycentral::surface;
-
-  const double scaleFactor = width / (P.colwise().maxCoeff() - P.colwise().minCoeff()).maxCoeff();
-  V *= scaleFactor;
-  P *= scaleFactor;
 
   // create geometry-central objects
   ManifoldSurfaceMesh mesh(F);
@@ -120,11 +114,17 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
   std::vector<int> fixedIdx = findCenterFaceIndices(P, F);
 
   FaceData<Eigen::Matrix2d> MrInv = precomputeSimData(mesh, P, F);
-  FaceData<double> theta1 = computeStretchAngles(mesh, V, F, MrInv);
-  VertexData<double> _theta2(mesh, theta2);
+  FaceData<double> theta1(mesh, 0);
+  VertexData<double> theta2(mesh, 0);
+
+  for(int i = 0; i < F.rows(); ++i)
+  {
+    for(int j = 0; j < 3; ++j)
+      theta1[i] += theta(F(i, j)) / 3;
+  }
 
   // Define simulation function
-  auto func = simulationFunction(mesh, MrInv, theta1, _theta2, E1, lambda1, lambda2, 0, thickness);
+  auto func = simulationFunction(mesh, MrInv, theta1, theta2, E1, lambda1, lambda2, 0, thickness);
 
   // ---------------- (Projected) Newton optimization ----------------
   LLTSolver solver;

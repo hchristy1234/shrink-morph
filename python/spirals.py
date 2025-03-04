@@ -34,28 +34,27 @@ printer.layer_height = 0.2
 
 lambda1 = 1
 lambda2 = 0.98
-outer_radius = 20
+outer_radius = 30
 inner_radius = 1
 thickness = 0.4
 angle = 45
 
-n_circle = 100
 vertices = []
 segments = []
-holes = []
+holes = [[0,0]]
 
 def make_circle(radius):
   n = len(vertices)
+  n_circle = round(3 * radius * np.pi)
   for i in range(n_circle):
     vertices.append([radius * np.cos(2 * i / n_circle * np.pi), radius * np.sin(2 * i / n_circle * np.pi)])
     segments.append([n + i, n + ((i + 1) % n_circle)])
 
 make_circle(outer_radius)
-make_circle(inner_radius)
+make_circle(inner_radius) 
 
-
-A = dict(vertices=vertices, segments=segments, holes=[[0,0]])
-B = tr.triangulate(A, 'pqa0.1')
+A = dict(vertices=vertices, segments=segments, holes=holes)
+B = tr.triangulate(A, 'pqa0.05')
 
 # Initialize polyscope
 ps.init()
@@ -66,7 +65,6 @@ zeros = np.zeros((len(B['vertices']), 1))
 P = np.hstack((np.array(B['vertices']), zeros))
 F = np.array(B['triangles'])
 ps.register_surface_mesh("Parameterization", P, F, edge_width=1, color=(42/255, 53/255, 213/255))
-
 
 theta = np.empty(P.shape[0])
 def callback():
@@ -110,6 +108,25 @@ def callback():
 
         curr_layer.append(np.column_stack((layer[j], (i + 1) * printer.layer_height * np.ones(layer[j].shape[0]))))
       trajectories.append({"height": printer.layer_height, "paths": curr_layer})
+
+  if gui.Button("Simulate"):
+    A = dict(vertices=vertices, segments=segments, holes=holes)
+    B = tr.triangulate(A, 'pqa0.5')
+
+    zeros = np.zeros((len(B['vertices']), 1))
+    P = np.hstack((np.array(B['vertices']), zeros))
+    F = np.array(B['triangles'])
+
+    V = P.copy()
+    V[:,2] = np.random.rand(V.shape[0])
+
+    theta = np.arctan2(P[:, 1], P[:, 0])
+    theta += np.radians(angle)
+
+    shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
+
+    ps.get_surface_mesh("Parameterization").set_enabled(False)
+    ps.register_surface_mesh("Simulation", V, F, edge_width=1, color=(42/255, 53/255, 213/255))
 
 
   if gui.Button("Export gcode"):
