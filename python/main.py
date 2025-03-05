@@ -228,10 +228,10 @@ class ShrinkMorph:
       if self.leave:
         return
 
-      self.after_calibrate_screen()
+      # self.after_calibrate_screen()
 
-      if self.leave:
-        return
+      # if self.leave:
+      #   return
 
       self.param_screen()
 
@@ -375,7 +375,10 @@ class ShrinkMorph:
     ps.show()
 
   delta = 0.005
-  
+  flattest_print = 1
+  measured_width = 0
+  measured_length = 0
+  gcode_generated = False
   def callback_calibrate(self):
     gui.PushItemWidth(200)
     #self.display_buildplate()
@@ -416,7 +419,26 @@ class ShrinkMorph:
       layer_height = self.printer.layer_height
       self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width, self.delta)
       self.printer.layer_height = layer_height
+      self.gcode_generated = True
+
+    if self.gcode_generated:
+      _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
+      _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
+      _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
+
     if gui.Button("Finish Calibration"):
+      if self.gcode_generated:
+        # Internal logic
+        self.lambda1 = self.measured_length / self.rect_length
+        self.lambda2 = self.measured_width / self.rect_width
+        self.lambda3 = 1 / self.lambda1
+        self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
+        
+        self.leave = False
+        ps.reset_camera_to_home_view()
+        ps.remove_all_structures()
+        ps.unshow()
+
       self.leave = False
       ps.unshow()
 
@@ -424,39 +446,36 @@ class ShrinkMorph:
     #     self.calibrate = False
     #     ps.unshow()
     #     self.param_screen()
-  def after_calibrate_screen(self):
-    self.leave = True
-    ps.remove_all_structures()
 
-    self.display_buildplate()
-    self.display_rectangles()
+  # def after_calibrate_screen(self):
+  #   self.leave = True
+  #   ps.remove_all_structures()
+
+  #   self.display_buildplate()
+  #   self.display_rectangles()
     
-    ps.set_user_callback(self.callback_after_calibrate)
-    ps.reset_camera_to_home_view()
-    ps.show()
-
-  delta = 0.005
+  #   ps.set_user_callback(self.callback_after_calibrate)
+  #   ps.reset_camera_to_home_view()
+  #   ps.show()
   
-  flattest_print = 1
-  measured_width = 0
-  measured_length = 0
-  def callback_after_calibrate(self):
-    gui.PushItemWidth(100)
-    _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
-    _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
-    _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
 
-    if gui.Button("Confirm"):
-      # Internal logic
-      self.lambda1 = self.measured_length / self.rect_length
-      self.lambda2 = self.measured_width / self.rect_width
-      self.lambda3 = 1 / self.lambda1
-      self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
+  # def callback_after_calibrate(self):
+  #   gui.PushItemWidth(100)
+  #   _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
+  #   _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
+  #   _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
+
+  #   if gui.Button("Confirm"):
+  #     # Internal logic
+  #     self.lambda1 = self.measured_length / self.rect_length
+  #     self.lambda2 = self.measured_width / self.rect_width
+  #     self.lambda3 = 1 / self.lambda1
+  #     self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
       
-      self.leave = False
-      ps.reset_camera_to_home_view()
-      ps.remove_all_structures()
-      ps.unshow()
+  #     self.leave = False
+  #     ps.reset_camera_to_home_view()
+  #     ps.remove_all_structures()
+  #     ps.unshow()
 
 
   def convert_trajectories(self, trajectories):
