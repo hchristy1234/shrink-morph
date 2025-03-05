@@ -208,6 +208,7 @@ class ShrinkMorph:
     ps.set_give_focus_on_show(True)
     ps.init()
     ps.set_up_dir("neg_y_up")
+    ps.set_view_from_json('{"farClipRatio":20.0,"fov":45.0,"nearClipRatio":0.005,"projectionMode":"Perspective","viewMat":[-1,0,-0.00231480551883578,-0.251647233963013,-0.00130982487462461,-0.824513077735901,0.565842509269714,24.8315353393555,-0.0019085897365585,0.565844297409058,0.824510514736176,-439.189819335938,0.0,0.0,0.0,1.0],"windowHeight":982,"windowWidth":1728}')
 
     twilight_image = os.path.join(os.path.dirname(__file__), "twilight_colormap.png")
     ps.load_color_map("twilight", twilight_image)
@@ -250,6 +251,7 @@ class ShrinkMorph:
   def optim_screen(self):
     self.leave = True
     ps.remove_all_structures()
+    self.display_buildplate()
     ps_input = ps.register_surface_mesh("Input mesh", self.V, self.F)
     ps_input.set_transparency(0.5)
 
@@ -258,7 +260,7 @@ class ShrinkMorph:
     self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
 
     ps.set_user_callback(self.callback_optim)
-    ps.reset_camera_to_home_view()
+    # ps.reset_camera_to_home_view()
     ps.show()
 
   resolutions = ["Low", "Medium", "High"]
