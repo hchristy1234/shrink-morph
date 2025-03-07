@@ -102,22 +102,23 @@ class ShrinkMorph:
 
     if gui.Button("Select File"):
       filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
-      self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
+      if filename:
+        self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
 
-      self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
-      scale = self.width / (np.max(self.P) - np.min(self.P))
-      self.P *= scale
-      self.V *= scale
+        self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
+        scale = self.width / (np.max(self.P) - np.min(self.P))
+        self.P *= scale
+        self.V *= scale
 
-      ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+        ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
 
-      sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+        sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
-      self.file_selected = True
-      self.file_not_select_error = False
+        self.file_selected = True
+        self.file_not_select_error = False
 
 
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
@@ -561,7 +562,8 @@ class ShrinkMorph:
       ps.remove_all_structures()
     if gui.Button("Export to g-code"):
       filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-      self.printer.to_gcode(self.trajectories, filename, variable_layer_height=True)
+      if filename:
+        self.printer.to_gcode(self.trajectories, filename, variable_layer_height=True)
   
   def read_trajectories(self, filename):
     print("reading file " + filename)
@@ -612,7 +614,8 @@ class ShrinkMorph:
           layers.append(layer)
           print(f"layer height: {height:.4f}; posZ: {posZ[j]:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
-    self.printer.to_gcode(layers, save_path, variable_layer_height=True)
+    if save_path:
+      self.printer.to_gcode(layers, save_path, variable_layer_height=True)
 
 main = ShrinkMorph()
 main.show()
