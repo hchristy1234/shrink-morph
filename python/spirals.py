@@ -43,18 +43,18 @@ vertices = []
 segments = []
 holes = [[0,0]]
 
-def make_circle(radius):
+def make_circle(radius, factor):
   n = len(vertices)
-  n_circle = round(3 * radius * np.pi)
+  n_circle = round(factor * radius * np.pi)
   for i in range(n_circle):
     vertices.append([radius * np.cos(2 * i / n_circle * np.pi), radius * np.sin(2 * i / n_circle * np.pi)])
     segments.append([n + i, n + ((i + 1) % n_circle)])
 
-make_circle(outer_radius)
-make_circle(inner_radius) 
+make_circle(outer_radius, 3)
+make_circle(inner_radius, 3) 
 
 A = dict(vertices=vertices, segments=segments, holes=holes)
-B = tr.triangulate(A, 'pqa0.05')
+B = tr.triangulate(A, 'pqa0.1')
 
 # Initialize polyscope
 ps.init()
@@ -68,7 +68,7 @@ ps.register_surface_mesh("Parameterization", P, F, edge_width=1, color=(42/255, 
 
 theta = np.empty(P.shape[0])
 def callback():
-  global thickness, outer_radius, angle, lambda2, P, trajectories, printer
+  global thickness, outer_radius, angle, lambda2, P, trajectories, printer, vertices, segments, F
 
   gui.PushItemWidth(50)
   _, printer.nozzle_width = gui.InputDouble("Nozzle width (mm)", printer.nozzle_width, format="%.2f")    
@@ -110,15 +110,20 @@ def callback():
       trajectories.append({"height": printer.layer_height, "paths": curr_layer})
 
   if gui.Button("Simulate"):
-    A = dict(vertices=vertices, segments=segments, holes=holes)
-    B = tr.triangulate(A, 'pqa0.5')
+    vertices = []
+    segments = []
+
+    make_circle(outer_radius, 1)
+
+    A = dict(vertices=vertices, segments=segments)
+    B = tr.triangulate(A, 'pqa5')
 
     zeros = np.zeros((len(B['vertices']), 1))
     P = np.hstack((np.array(B['vertices']), zeros))
     F = np.array(B['triangles'])
 
     V = P.copy()
-    V[:,2] = np.random.rand(V.shape[0])
+    V[:,2] = 0.01 * np.random.rand(V.shape[0])
 
     theta = np.arctan2(P[:, 1], P[:, 0])
     theta += np.radians(angle)
