@@ -28,7 +28,7 @@ using namespace nb::literals;
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXi> readFromOBJ(std::string fileName)
 {
   Eigen::MatrixXd V;
-  Eigen::MatrixXi F;
+  Eigen::MatrixXi F; 
   if(!igl::readOBJ(fileName, V, F))
   {
     std::cout << "File " << fileName << " not found\n";

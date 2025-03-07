@@ -86,7 +86,7 @@ class ShrinkMorph:
     build_vert[:, 1] *= self.printer.bed_size[1] / 2
     build_face = np.array([[0, 1, 2, 3]])
 
-    ps.register_surface_mesh("Buildplate", build_vert, build_face, color=(0.95, 0.95, 0.95), edge_width=5, edge_color=(0.5, 0.5, 0.5), material="flat")
+    ps.register_curve_network("Buildplate", build_vert, "loop", color=(0.5, 0.5, 0.5), material="flat")
 
   def param_screen(self):
     print("in param screen")
@@ -127,10 +127,7 @@ class ShrinkMorph:
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
-          build_vert = np.array([[-1,-1,-0.1], [1, -1, -0.1], [1, 1, -0.1], [-1, 1, -0.1]])
-          build_vert[:, 0] *= self.printer.bed_size[0] / 2
-          build_vert[:, 1] *= self.printer.bed_size[1] / 2
-          ps.get_surface_mesh("Buildplate").update_vertex_positions(build_vert)
+          self.display_buildplate()
       gui.EndCombo()
     gui.PopItemWidth()
 
@@ -207,7 +204,8 @@ class ShrinkMorph:
   def show(self):
     ps.set_give_focus_on_show(True)
     ps.init()
-    ps.set_up_dir("neg_y_up")
+    ps.set_up_dir("z_up")
+    ps.set_front_dir("y_front")
     ps.set_view_from_json('{"farClipRatio":20.0,"fov":45.0,"nearClipRatio":0.005,"projectionMode":"Perspective","viewMat":[-1,0,-0.00231480551883578,-0.251647233963013,-0.00130982487462461,-0.824513077735901,0.565842509269714,24.8315353393555,-0.0019085897365585,0.565844297409058,0.824510514736176,-439.189819335938,0.0,0.0,0.0,1.0],"windowHeight":982,"windowWidth":1728}')
 
     twilight_image = os.path.join(os.path.dirname(__file__), "twilight_colormap.png")
@@ -252,12 +250,15 @@ class ShrinkMorph:
     self.leave = True
     ps.remove_all_structures()
     self.display_buildplate()
+    
+    min_coords = np.min(self.V, axis=0)
+    self.V[:, 2] -= min_coords[2]
+
     ps_input = ps.register_surface_mesh("Input mesh", self.V, self.F)
     ps_input.set_transparency(0.5)
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
-    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
 
     ps.set_user_callback(self.callback_optim)
     # ps.reset_camera_to_home_view()
@@ -297,6 +298,7 @@ class ShrinkMorph:
       # if ps.has_surface_mesh("Simulation"):
       #   ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
       # else:
+      self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
       print("Initial distance", self.optim_solver.distance(self.theta2))
       ps.register_surface_mesh("Optimized mesh", self.optim_solver.optimizedV(), self.F)
       self.optim_running = True
