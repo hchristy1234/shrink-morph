@@ -33,7 +33,7 @@ printer = togcode.Printer(printer_profile)
 printer.layer_height = 0.2
 
 lambda1 = 1
-lambda2 = 0.98
+lambda2 = 0.92
 outer_radius = 30
 inner_radius = 1
 thickness = 0.4
@@ -78,6 +78,11 @@ def callback():
   _, printer.layer_height = gui.InputDouble("Layer height", printer.layer_height, format="%.2f")
   _, printer.bed_temp = gui.InputDouble("Bed temperature (ºC)", printer.bed_temp, format="%.0f")
   _, printer.extruder_temp = gui.InputDouble("Nozzle temperature (ºC)", printer.extruder_temp, format="%.0f")
+  _, printer.filament_priming = gui.InputDouble("Retract length (mm)", printer.filament_priming, format="%.0f")
+  gui.PushItemWidth(110)
+  _, printer.nloops = gui.InputInt("Number of loops around object", printer.nloops, step=1)
+  gui.PopItemWidth()
+  _, printer.flow_multiplier = gui.InputDouble("Flow multiplier", printer.flow_multiplier, format="%.2f")
   _, lambda2 = gui.InputDouble("Shrinking ratio", lambda2, format="%.2f")
   changed, outer_radius = gui.DragFloat("Outer radius (mm)", outer_radius, 1, 1, 100, "%.0f")
   if changed and outer_radius > 0:
@@ -116,14 +121,14 @@ def callback():
     make_circle(outer_radius, 1)
 
     A = dict(vertices=vertices, segments=segments)
-    B = tr.triangulate(A, 'pqa5')
+    B = tr.triangulate(A, 'pqa1')
 
     zeros = np.zeros((len(B['vertices']), 1))
     P = np.hstack((np.array(B['vertices']), zeros))
     F = np.array(B['triangles'])
 
     V = P.copy()
-    V[:,2] = 0.01 * np.random.rand(V.shape[0])
+    V[:,2] = 1e-3 * np.random.rand(V.shape[0])
 
     theta = np.arctan2(P[:, 1], P[:, 0])
     theta += np.radians(angle)

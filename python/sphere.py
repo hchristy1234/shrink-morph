@@ -85,6 +85,11 @@ def callback():
   _, printer.layer_height = gui.InputDouble("Layer height", printer.layer_height, format="%.2f")
   _, printer.bed_temp = gui.InputDouble("Bed temperature (ºC)", printer.bed_temp, format="%.0f")
   _, printer.extruder_temp = gui.InputDouble("Nozzle temperature (ºC)", printer.extruder_temp, format="%.0f")
+  _, printer.filament_priming = gui.InputDouble("Retract length (mm)", printer.filament_priming, format="%.0f")
+  gui.PushItemWidth(130)
+  _, printer.nloops = gui.InputInt("Number of loops around object", printer.nloops, step=1)
+  gui.PopItemWidth()
+  _, printer.flow_multiplier = gui.InputDouble("Flow multiplier", printer.flow_multiplier, format="%.2f")
   _, lambda2 = gui.InputDouble("Shrinking ratio", lambda2, format="%.2f")
   changed, outer_radius = gui.DragFloat("Outer radius (mm)", outer_radius, 1, 1, 100, "%.0f")
   if changed and outer_radius > 0:
