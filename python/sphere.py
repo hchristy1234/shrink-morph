@@ -3,8 +3,12 @@ import numpy as np
 import polyscope as ps
 import polyscope.imgui as gui
 import togcode
+import tkinter
 from tkinter import filedialog
 import triangle as tr
+
+root = tkinter.Tk()
+root.withdraw()
 
 def display_trajectories(nodes, edges):
   ps_traj = ps.register_curve_network("Layer", nodes, edges, enabled=True, radius=printer.nozzle_width / 2)
@@ -39,6 +43,7 @@ printer.layer_height = 0.2
 lambda1 = 1
 lambda2 = 0.92
 outer_radius = 30
+eccentricity = 1
 inner_radius = 1
 thickness = 0.4
 angle = 45
@@ -75,7 +80,7 @@ K_min = -4 * lambda1 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2)
 K_max = 4 * lambda2 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2) / outer_radius**2 - 1e-6
 K = K_max
 def callback():
-  global thickness, outer_radius, angle, lambda2, P, trajectories, printer, vertices, segments, F, K
+  global thickness, outer_radius, eccentricity, angle, lambda2, P, trajectories, printer, vertices, segments, F, K, K_min, K_max
 
   gui.PushItemWidth(70)
   _, printer.nozzle_width = gui.InputDouble("Nozzle width (mm)", printer.nozzle_width, format="%.2f")    
@@ -93,17 +98,33 @@ def callback():
   _, lambda2 = gui.InputDouble("Shrinking ratio", lambda2, format="%.2f")
   changed, outer_radius = gui.DragFloat("Outer radius (mm)", outer_radius, 1, 1, 100, "%.0f")
   if changed and outer_radius > 0:
-    P *= outer_radius / (np.max(P) - np.min(P))
+    P *= 2 * outer_radius / (np.max(P) - np.min(P))
     ps.get_surface_mesh("Parameterization").update_vertex_positions(P)
-  _, K = gui.DragFloat("Gaussian curvature", K, 1e-6, K_min, K_max, "%.5f")
+    K_min = -4 * lambda1 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2) / outer_radius**2 + 1e-6
+    K_max = 4 * lambda2 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2) / outer_radius**2 - 1e-6
+    K = K_max
+  _, K = gui.DragFloat("Gaussian curvature", K, K_max / 400, K_min, K_max, "%.5f")
+  changed, eccentricity = gui.DragFloat("Ellipse eccentricity", eccentricity, 1 / 300., 0.01, 1., "%.2f")
+  if changed and eccentricity > 0:
+    e = (np.max(P[:,1]) - np.min(P[:,1])) / (np.max(P[:,0]) - np.min(P[:,0]))
+    P[:,1] *= eccentricity / e
+    ps.get_surface_mesh("Parameterization").update_vertex_positions(P)
+
 
   if gui.Button("Generate spiral pattern"):
+    # project to disk
+    P[:,1] /= eccentricity
     theta = np.arctan2(P[:, 1], P[:, 0])
     theta += director_angle(np.linalg.norm(P, axis=1), K, lambda1, lambda2)
 
     stripe = shrink_morph_py.StripeAlgo(P[:, :2], F)
     layer = stripe.generate_one_layer(P[:, :2], F, theta, 0 * theta, printer.layer_height, printer.nozzle_width, 10, 0)
     nodes, edges = convert_trajectories(layer)
+
+    # rescale
+    P[:,1] *= eccentricity
+    nodes[:,1] *= eccentricity
+
     display_trajectories(nodes, edges)
 
     n_layers = round(thickness / printer.layer_height)
@@ -111,6 +132,9 @@ def callback():
     for i in range(n_layers):
       curr_layer = []
       for j in range(len(layer)):
+        # rescale
+        layer[j][:,1] *= eccentricity
+
         # rotate wrt previous layer
         s = 2 * printer.nozzle_width / outer_radius
         c = 1 - (2 * printer.nozzle_width / outer_radius)**2 / 2
@@ -138,7 +162,7 @@ def callback():
     V = P.copy()
     V[:,2] = 1e-3 * np.random.rand(V.shape[0])
 
-    theta = np.arctan2(P[:, 1], P[:, 0])
+    theta = np.arctan2(P[:, 1] / eccentricity, P[:, 0])
     theta += director_angle(np.linalg.norm(P, axis=1), K, lambda1, lambda2)
 
     shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
@@ -148,9 +172,9 @@ def callback():
 
 
   if gui.Button("Export gcode"):
-    # filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-    # printer.to_gcode(trajectories, filename, variable_layer_height=True)
-    printer.to_gcode(trajectories, "output.gcode", variable_layer_height=True)
+    filename = filedialog.asksaveasfilename(defaultextension='.gcode')
+    printer.to_gcode(trajectories, filename, variable_layer_height=True)
+    # printer.to_gcode(trajectories, "output.gcode", variable_layer_height=True)
 
 
 
