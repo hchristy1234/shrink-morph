@@ -86,7 +86,7 @@ class ShrinkMorph:
     build_vert[:, 1] *= self.printer.bed_size[1] / 2
     build_face = np.array([[0, 1, 2, 3]])
 
-    ps.register_surface_mesh("Buildplate", build_vert, build_face, color=(0.95, 0.95, 0.95), edge_width=5, edge_color=(0.5, 0.5, 0.5), material="flat")
+    ps.register_curve_network("Buildplate", build_vert, "loop", color=(0.5, 0.5, 0.5), material="flat")
 
   def param_screen(self):
     print("in param screen")
@@ -102,22 +102,23 @@ class ShrinkMorph:
 
     if gui.Button("Select File"):
       filename = filedialog.askopenfilename(defaultextension=".obj", filetypes=[("Wavefront OBJ", "*.obj")])
-      self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
+      if filename:
+        self.V, self.F = shrink_morph_py.read_from_OBJ(filename)
 
-      self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
-      scale = self.width / (np.max(self.P) - np.min(self.P))
-      self.P *= scale
-      self.V *= scale
+        self.P = shrink_morph_py.parameterization(self.V, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
+        scale = self.width / (np.max(self.P) - np.min(self.P))
+        self.P *= scale
+        self.V *= scale
 
-      ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+        ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
 
-      sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
+        sigma1, sigma2, self.angles = shrink_morph_py.compute_SVD_data(self.V, self.P, self.F)
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
+        ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
-      self.file_selected = True
-      self.file_not_select_error = False
+        self.file_selected = True
+        self.file_not_select_error = False
 
 
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
@@ -127,10 +128,7 @@ class ShrinkMorph:
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
-          build_vert = np.array([[-1,-1,-0.1], [1, -1, -0.1], [1, 1, -0.1], [-1, 1, -0.1]])
-          build_vert[:, 0] *= self.printer.bed_size[0] / 2
-          build_vert[:, 1] *= self.printer.bed_size[1] / 2
-          ps.get_surface_mesh("Buildplate").update_vertex_positions(build_vert)
+          self.display_buildplate()
       gui.EndCombo()
     gui.PopItemWidth()
 
@@ -192,22 +190,12 @@ class ShrinkMorph:
       self.in_calibration_loop = True
       ps.unshow()
 
-    # if gui.Button("Test"):
-    #   # V, P, F, theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, 0 * self.angles, 0.8)
-    #   theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
-    #   self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
-    #   trajectories = self.stripe.generate_one_layer(self.P, self.F, theta1, 0 * theta1, self.printer.layer_height, self.printer.nozzle_width, 10, 0)
-    #   # dirs = shrink_morph_py.vertex_based_stretch_vectors(V, P, F)
-    #   # trajectories = shrink_morph_py.generate_trajectories(P, F, dirs, 0.4)
-    #   nodes, edges = self.convert_trajectories(trajectories)
-    #   ps_traj = ps.register_curve_network("Test", nodes, edges, enabled=True, radius=0.2)
-    #   ps_traj.set_radius(0.2, relative=False)
-    #   ps_traj.set_color((0.3, 0.6, 0.8))
-  
   def show(self):
     ps.set_give_focus_on_show(True)
     ps.init()
-    ps.set_up_dir("neg_y_up")
+    ps.set_up_dir("z_up")
+    ps.set_front_dir("y_front")
+    ps.set_view_from_json('{"farClipRatio":20.0,"fov":45.0,"nearClipRatio":0.005,"projectionMode":"Perspective","viewMat":[-1,0,-0.00231480551883578,-0.251647233963013,-0.00130982487462461,-0.824513077735901,0.565842509269714,24.8315353393555,-0.0019085897365585,0.565844297409058,0.824510514736176,-439.189819335938,0.0,0.0,0.0,1.0],"windowHeight":982,"windowWidth":1728}')
 
     twilight_image = os.path.join(os.path.dirname(__file__), "twilight_colormap.png")
     ps.load_color_map("twilight", twilight_image)
@@ -228,10 +216,10 @@ class ShrinkMorph:
       if self.leave:
         return
 
-      self.after_calibrate_screen()
+      # self.after_calibrate_screen()
 
-      if self.leave:
-        return
+      # if self.leave:
+      #   return
 
       self.param_screen()
 
@@ -250,15 +238,19 @@ class ShrinkMorph:
   def optim_screen(self):
     self.leave = True
     ps.remove_all_structures()
+    self.display_buildplate()
+    
+    min_coords = np.min(self.V, axis=0)
+    self.V[:, 2] -= min_coords[2]
+
     ps_input = ps.register_surface_mesh("Input mesh", self.V, self.F)
     ps_input.set_transparency(0.5)
 
     self.targetV = self.V.copy()
     self.theta2 = np.zeros(self.V.shape[0])
-    self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
 
     ps.set_user_callback(self.callback_optim)
-    ps.reset_camera_to_home_view()
+    # ps.reset_camera_to_home_view()
     ps.show()
 
   resolutions = ["Low", "Medium", "High"]
@@ -295,6 +287,7 @@ class ShrinkMorph:
       # if ps.has_surface_mesh("Simulation"):
       #   ps.get_surface_mesh("Simulation").update_vertex_positions(self.V)
       # else:
+      self.optim_solver = shrink_morph_py.SGNSolver(self.targetV, self.P, self.F, self.E1, self.lambda1, self.lambda2, self.thickness * self.lambda3)
       print("Initial distance", self.optim_solver.distance(self.theta2))
       ps.register_surface_mesh("Optimized mesh", self.optim_solver.optimizedV(), self.F)
       self.optim_running = True
@@ -325,7 +318,7 @@ class ShrinkMorph:
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
     self.n_layers = round(self.thickness / self.printer.layer_height)
-    layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, 0)
+    layer = self.stripe.generate_first_layer(self.P, self.F, self.theta1 - 0.5 * self.theta2, self.printer.nozzle_width)
     nodes, edges = self.convert_trajectories(layer)
 
     layer_height = self.modified_layer_height(self.printer.layer_height, 0, 1, self.n_layers, self.gradient)
@@ -375,7 +368,10 @@ class ShrinkMorph:
     ps.show()
 
   delta = 0.005
-  
+  flattest_print = 1
+  measured_width = 0
+  measured_length = 0
+  gcode_generated = False
   def callback_calibrate(self):
     gui.PushItemWidth(200)
     #self.display_buildplate()
@@ -416,7 +412,26 @@ class ShrinkMorph:
       layer_height = self.printer.layer_height
       self.generate_calibration(self.num_rectangles, self.printer.layer_height, self.thickness, self.printer.nozzle_width, self.rect_length, self.rect_width, self.delta)
       self.printer.layer_height = layer_height
+      self.gcode_generated = True
+
+    if self.gcode_generated:
+      _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
+      _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
+      _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
+
     if gui.Button("Finish Calibration"):
+      if self.gcode_generated:
+        # Internal logic
+        self.lambda1 = self.measured_length / self.rect_length
+        self.lambda2 = self.measured_width / self.rect_width
+        self.lambda3 = 1 / self.lambda1
+        self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
+        
+        self.leave = False
+        ps.reset_camera_to_home_view()
+        ps.remove_all_structures()
+        ps.unshow()
+
       self.leave = False
       ps.unshow()
 
@@ -424,39 +439,36 @@ class ShrinkMorph:
     #     self.calibrate = False
     #     ps.unshow()
     #     self.param_screen()
-  def after_calibrate_screen(self):
-    self.leave = True
-    ps.remove_all_structures()
 
-    self.display_buildplate()
-    self.display_rectangles()
+  # def after_calibrate_screen(self):
+  #   self.leave = True
+  #   ps.remove_all_structures()
+
+  #   self.display_buildplate()
+  #   self.display_rectangles()
     
-    ps.set_user_callback(self.callback_after_calibrate)
-    ps.reset_camera_to_home_view()
-    ps.show()
-
-  delta = 0.005
+  #   ps.set_user_callback(self.callback_after_calibrate)
+  #   ps.reset_camera_to_home_view()
+  #   ps.show()
   
-  flattest_print = 1
-  measured_width = 0
-  measured_length = 0
-  def callback_after_calibrate(self):
-    gui.PushItemWidth(100)
-    _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
-    _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
-    _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
 
-    if gui.Button("Confirm"):
-      # Internal logic
-      self.lambda1 = self.measured_length / self.rect_length
-      self.lambda2 = self.measured_width / self.rect_width
-      self.lambda3 = 1 / self.lambda1
-      self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
+  # def callback_after_calibrate(self):
+  #   gui.PushItemWidth(100)
+  #   _, self.flattest_print = gui.SliderInt("Select the flattest print", self.flattest_print, v_min=1, v_max=self.num_rectangles)
+  #   _, self.measured_width = gui.InputDouble("Input measured width (mm)", self.measured_width, 0, 0, "%.1f")
+  #   _, self.measured_length = gui.InputDouble("Input measured length (mm)", self.measured_length, 0, 0, "%.1f")
+
+  #   if gui.Button("Confirm"):
+  #     # Internal logic
+  #     self.lambda1 = self.measured_length / self.rect_length
+  #     self.lambda2 = self.measured_width / self.rect_width
+  #     self.lambda3 = 1 / self.lambda1
+  #     self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
       
-      self.leave = False
-      ps.reset_camera_to_home_view()
-      ps.remove_all_structures()
-      ps.unshow()
+  #     self.leave = False
+  #     ps.reset_camera_to_home_view()
+  #     ps.remove_all_structures()
+  #     ps.unshow()
 
 
   def convert_trajectories(self, trajectories):
@@ -487,7 +499,8 @@ class ShrinkMorph:
   curr_layer = 1
   def callback_traj(self):
     if self.curr_layer < self.n_layers:
-      layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.layer_height, self.printer.nozzle_width, self.n_layers, self.curr_layer)
+      theta = self.theta1 + (self.curr_layer / (self.n_layers - 1.) - 1 / 2.) * self.theta2
+      layer = self.stripe.generate_other_layer(self.P, self.F, theta, self.printer.nozzle_width)
       
       layer_height = self.modified_layer_height(self.printer.layer_height, self.curr_layer, 1, self.n_layers, self.gradient)
       self.curr_z += layer_height
@@ -538,7 +551,8 @@ class ShrinkMorph:
       ps.remove_all_structures()
     if gui.Button("Export to g-code"):
       filename = filedialog.asksaveasfilename(defaultextension='.gcode')
-      self.printer.to_gcode(self.trajectories, filename, variable_layer_height=True)
+      if filename:
+        self.printer.to_gcode(self.trajectories, filename, variable_layer_height=True)
   
   def read_trajectories(self, filename):
     print("reading file " + filename)
@@ -589,7 +603,8 @@ class ShrinkMorph:
           layers.append(layer)
           print(f"layer height: {height:.4f}; posZ: {posZ[j]:.4f}") # for debug purposes
     save_path = filedialog.asksaveasfilename(defaultextension="gcode", initialdir=os.getcwd())
-    self.printer.to_gcode(layers, save_path, variable_layer_height=True)
+    if save_path:
+      self.printer.to_gcode(layers, save_path, variable_layer_height=True)
 
 main = ShrinkMorph()
 main.show()

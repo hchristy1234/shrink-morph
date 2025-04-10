@@ -118,7 +118,7 @@ def callback():
     theta += director_angle(np.linalg.norm(P, axis=1), K, lambda1, lambda2)
 
     stripe = shrink_morph_py.StripeAlgo(P[:, :2], F)
-    layer = stripe.generate_one_layer(P[:, :2], F, theta, 0 * theta, printer.nozzle_width, 10, 0)
+    layer = stripe.generate_first_layer(P[:, :2], F, theta, printer.nozzle_width)
     nodes, edges = convert_trajectories(layer)
 
     # rescale

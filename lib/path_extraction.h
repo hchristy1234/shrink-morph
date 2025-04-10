@@ -9,28 +9,21 @@ orderPolylines(const std::vector<std::vector<geometrycentral::Vector3>>& isoline
 
 std::vector<Eigen::MatrixXd> simplifyPolylines(const std::vector<std::vector<geometrycentral::Vector3>>& polylines);
 
-std::vector<std::vector<Eigen::MatrixXd>>
-generatePaths(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
-              const Eigen::VectorXd& theta1,
-              const Eigen::VectorXd& theta2,
-              double layerHeight,
-              int nLayers,
-              double spacing);
+std::vector<std::vector<Eigen::MatrixXd>> generatePaths(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
+                                                        const Eigen::VectorXd& theta1,
+                                                        const Eigen::VectorXd& theta2,
+                                                        int nLayers,
+                                                        double spacing);
 
 std::vector<Eigen::MatrixXd> generateOneLayer(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
-                                                                    const Eigen::VectorXd& theta1,
-                                                                    const Eigen::VectorXd& theta2,
-                                                                    const Eigen::SparseMatrix<double>& massMatrix,
-                                                                    Eigen::VectorXd& u,
-                                                                    LDLTSolver& solver,
-                                                                    int i,
-                                                                    int nLayers,
-                                                                    double layerHeight,
-                                                                    double spacing);
+                                              const Eigen::VectorXd& theta,
+                                              const Eigen::SparseMatrix<double>& massMatrix,
+                                              Eigen::VectorXd& u,
+                                              LDLTSolver& solver,
+                                              bool patternAnalyzed,
+                                              double spacing);
 
-void writePaths(const std::string& filename,
-                const std::vector<Eigen::MatrixXd>& paths,
-                double height);
+void writePaths(const std::string& filename, const std::vector<Eigen::MatrixXd>& paths, double height);
 
 std::vector<std::vector<geometrycentral::Vector3>> edgeToPolyline(const std::vector<geometrycentral::Vector3>& points,
                                                                   const std::vector<std::array<size_t, 2>>& edges);
