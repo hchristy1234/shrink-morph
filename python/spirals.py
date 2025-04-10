@@ -107,7 +107,7 @@ def callback():
     theta += np.radians(angle)
 
     stripe = shrink_morph_py.StripeAlgo(P[:, :2], F)
-    layer = stripe.generate_one_layer(P[:, :2], F, theta, 0 * theta, printer.layer_height, printer.nozzle_width, 10, 0)
+    layer = stripe.generate_one_layer(P[:, :2], F, theta, 0 * theta, printer.nozzle_width, 10, 0)
     nodes, edges = convert_trajectories(layer)
 
     # rescale
