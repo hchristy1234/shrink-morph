@@ -1,3 +1,4 @@
+#include "SGNSolver.h"
 #include "functions.h"
 #include "newton.h"
 #include "parameterization.h"
@@ -6,7 +7,6 @@
 #include "stretch_angles.h"
 #include "stripe_patterns.h"
 #include "timer.h"
-#include "SGNSolver.h"
 
 #include <Eigen/Dense>
 #include <igl/loop.h>
@@ -28,7 +28,7 @@ using namespace nb::literals;
 std::tuple<Eigen::MatrixXd, Eigen::MatrixXi> readFromOBJ(std::string fileName)
 {
   Eigen::MatrixXd V;
-  Eigen::MatrixXi F; 
+  Eigen::MatrixXi F;
   if(!igl::readOBJ(fileName, V, F))
   {
     std::cout << "File " << fileName << " not found\n";
@@ -143,7 +143,6 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
                                        double E1,
                                        double lambda1,
                                        double lambda2,
-                                      //  double deltaLambda,
                                        double thickness,
                                        double width,
                                        int n_iter,
@@ -223,21 +222,21 @@ struct StripeAlgo
   }
 
   std::vector<Eigen::MatrixXd> generateOtherLayer(const nb::DRef<Eigen::MatrixXd>& P,
-    const nb::DRef<Eigen::MatrixXi>& F,
-    const nb::DRef<Eigen::VectorXd>& theta,
-    double spacing)
+                                                  const nb::DRef<Eigen::MatrixXi>& F,
+                                                  const nb::DRef<Eigen::VectorXd>& theta,
+                                                  double spacing)
   {
-  using namespace geometrycentral;
-  using namespace geometrycentral::surface;
+    using namespace geometrycentral;
+    using namespace geometrycentral::surface;
 
-  // create geometry-central objects
-  ManifoldSurfaceMesh mesh(F);
-  Eigen::MatrixXd P_3D(P.rows(), 3);
-  P_3D.leftCols(2) = P;
-  P_3D.col(2).setZero();
-  VertexPositionGeometry geometryUV(mesh, P_3D);
+    // create geometry-central objects
+    ManifoldSurfaceMesh mesh(F);
+    Eigen::MatrixXd P_3D(P.rows(), 3);
+    P_3D.leftCols(2) = P;
+    P_3D.col(2).setZero();
+    VertexPositionGeometry geometryUV(mesh, P_3D);
 
-  return generateOneLayer(geometryUV, theta, massMatrix, u, solver, true, spacing);
+    return generateOneLayer(geometryUV, theta, massMatrix, u, solver, true, spacing);
   }
 };
 
@@ -296,8 +295,8 @@ NB_MODULE(shrink_morph_py, m)
       .def("generate_other_layer", &StripeAlgo::generateOtherLayer);
 
   nb::class_<SGNSolver>(m, "SGNSolver")
-      .def(nb::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&, const Eigen::MatrixXi&,
-                    double, double, double, double>())
+      .def(nb::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&, const Eigen::MatrixXi&, double, double, double,
+                    double>())
       .def("solve_one_step", &SGNSolver::solveOneStep)
       .def("optimizedV", &SGNSolver::vertices)
       .def("distance", &SGNSolver::distance)

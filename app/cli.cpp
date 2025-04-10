@@ -122,8 +122,8 @@ int main(int argc, char* argv[])
   // Define optimization function
   auto adjointFunc = adjointFunction(geometry, F, MrInv, theta1, E1, lambda1, lambda2, deltaLambda, thickness);
   // Optimize this energy function using SGN [Zehnder et al. 2021]
-  sparse_gauss_newton(geometry, targetV, MrInv, theta1, theta2, adjointFunc, fixedIdx, n_iter, lim, wM, wL, E1,
-                      lambda1, lambda2, deltaLambda, thickness);
+  sparse_gauss_newton(geometry, targetV, MrInv, theta1, theta2, adjointFunc, fixedIdx, n_iter, lim, wM, wL, E1, lambda1,
+                      lambda2, deltaLambda, thickness);
   optimTimer.stop();
 
   // Display distance with target mesh
@@ -134,7 +134,7 @@ int main(int argc, char* argv[])
   std::cout << "Max distance = "
             << 100 * d.lpNorm<Eigen::Infinity>() / (targetV.colwise().maxCoeff() - targetV.colwise().minCoeff()).norm()
             << "\n";
- 
+
   // Generate trajectories
   std::cout << "************\nTRAJECTORIES\n************\n";
 
@@ -183,8 +183,7 @@ int main(int argc, char* argv[])
   for(auto& mat: subdivMat)
     th2 = mat * th2;
 
-  std::vector<std::vector<Eigen::MatrixXd>> paths =
-      generatePaths(geometryUV, th1, th2, nLayers, spacing);
+  std::vector<std::vector<Eigen::MatrixXd>> paths = generatePaths(geometryUV, th1, th2, nLayers, spacing);
 
   for(int i = 0; i < nLayers; ++i)
     writePaths(filename + ".path", paths[i], (i + 1) * layerHeight);
