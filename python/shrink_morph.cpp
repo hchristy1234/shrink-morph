@@ -182,44 +182,6 @@ Eigen::VectorXd directionsOptimization(nb::DRef<Eigen::MatrixXd> V,
   return theta2.toVector();
 }
 
-// std::vector<Eigen::MatrixXd> generateTrajectories(const nb::DRef<Eigen::MatrixXd>& P,
-//                                                   const nb::DRef<Eigen::MatrixXi>& F,
-//                                                   const nb::DRef<Eigen::MatrixXd>& directions,
-//                                                   double spacing)
-// {
-//   using namespace geometrycentral;
-//   using namespace geometrycentral::surface;
-
-//   // create geometry-central objects
-//   ManifoldSurfaceMesh mesh(F);
-//   Eigen::MatrixXd P_3D(P.rows(), 3);
-//   P_3D.leftCols(2) = P;
-//   P_3D.col(2).setZero();
-//   VertexPositionGeometry geometryUV(mesh, P_3D);
-
-//   geometryUV.requireVertexTangentBasis();
-//   VertexData<double> frequencies(mesh, 1.0 / spacing);
-
-//   // compute direction field
-//   VertexData<Vector2> directionField(mesh);
-//   for(size_t i = 0; i < mesh.nVertices(); ++i)
-//   {
-//     // interpolate orientations w.r.t layer
-//     directionField[i] = {directions(i, 0), directions(i, 1)};
-//     // express vectors in their respective vertex local bases (the stripes algorithm expects that)
-//     auto basisVector = geometryUV.vertexTangentBasis[i][0];
-//     Vector2 base{basisVector.x, basisVector.y};
-//     directionField[i] = -directionField[i].pow(2) / base.pow(2);
-//   }
-
-//   const auto& [stripeValues, stripeIndices, fieldIndices] = computeStripePattern(geometryUV, frequencies, directionField);
-//   const auto& [vertices, edges] = extractPolylinesFromStripePattern(geometryUV, stripeValues, stripeIndices, fieldIndices, directionField, true);
-
-//   auto polylines = edgeToPolyline(vertices, edges);
-//   polylines = orderPolylines(polylines);
-//   return simplifyPolylines(polylines);
-// }
-
 struct StripeAlgo
 {
   Eigen::SparseMatrix<double> massMatrix;
@@ -242,13 +204,10 @@ struct StripeAlgo
     u = Eigen::VectorXd::Random(mesh.nVertices() * 2);
   }
 
-  std::vector<Eigen::MatrixXd> generateTrajectory(const nb::DRef<Eigen::MatrixXd>& P,
+  std::vector<Eigen::MatrixXd> generateFirstLayer(const nb::DRef<Eigen::MatrixXd>& P,
                                                   const nb::DRef<Eigen::MatrixXi>& F,
-                                                  const nb::DRef<Eigen::VectorXd>& theta1,
-                                                  const nb::DRef<Eigen::VectorXd>& theta2,
-                                                  double spacing,
-                                                  int nLayers,
-                                                  int i)
+                                                  const nb::DRef<Eigen::VectorXd>& theta,
+                                                  double spacing)
   {
     using namespace geometrycentral;
     using namespace geometrycentral::surface;
@@ -260,7 +219,25 @@ struct StripeAlgo
     P_3D.col(2).setZero();
     VertexPositionGeometry geometryUV(mesh, P_3D);
 
-    return generateOneLayer(geometryUV, theta1, theta2, massMatrix, u, solver, i, nLayers, spacing);
+    return generateOneLayer(geometryUV, theta, massMatrix, u, solver, false, spacing);
+  }
+
+  std::vector<Eigen::MatrixXd> generateOtherLayer(const nb::DRef<Eigen::MatrixXd>& P,
+    const nb::DRef<Eigen::MatrixXi>& F,
+    const nb::DRef<Eigen::VectorXd>& theta,
+    double spacing)
+  {
+  using namespace geometrycentral;
+  using namespace geometrycentral::surface;
+
+  // create geometry-central objects
+  ManifoldSurfaceMesh mesh(F);
+  Eigen::MatrixXd P_3D(P.rows(), 3);
+  P_3D.leftCols(2) = P;
+  P_3D.col(2).setZero();
+  VertexPositionGeometry geometryUV(mesh, P_3D);
+
+  return generateOneLayer(geometryUV, theta, massMatrix, u, solver, true, spacing);
   }
 };
 
@@ -312,11 +289,11 @@ NB_MODULE(shrink_morph_py, m)
         });
   m.def("simulation", &simulation);
   m.def("directions_optimization", &directionsOptimization);
-  // m.def("generate_trajectories", &generateTrajectories);
   m.def("vertex_based_stretch_angles", &vertexBasedStretchAngles);
   nb::class_<StripeAlgo>(m, "StripeAlgo")
       .def(nb::init<const nb::DRef<Eigen::MatrixXd>&, const nb::DRef<Eigen::MatrixXi>&>())
-      .def("generate_one_layer", &StripeAlgo::generateTrajectory);
+      .def("generate_first_layer", &StripeAlgo::generateFirstLayer)
+      .def("generate_other_layer", &StripeAlgo::generateOtherLayer);
 
   nb::class_<SGNSolver>(m, "SGNSolver")
       .def(nb::init<const Eigen::MatrixXd&, const Eigen::MatrixXd&, const Eigen::MatrixXi&,

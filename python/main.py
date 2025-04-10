@@ -190,18 +190,6 @@ class ShrinkMorph:
       self.in_calibration_loop = True
       ps.unshow()
 
-    # if gui.Button("Test"):
-    #   # V, P, F, theta2 = shrink_morph_py.subdivide(self.V, self.P, self.F, 0 * self.angles, 0.8)
-    #   theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
-    #   self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
-    #   trajectories = self.stripe.generate_one_layer(self.P, self.F, theta1, 0 * theta1, self.printer.nozzle_width, 10, 0)
-    #   # dirs = shrink_morph_py.vertex_based_stretch_vectors(V, P, F)
-    #   # trajectories = shrink_morph_py.generate_trajectories(P, F, dirs, 0.4)
-    #   nodes, edges = self.convert_trajectories(trajectories)
-    #   ps_traj = ps.register_curve_network("Test", nodes, edges, enabled=True, radius=0.2)
-    #   ps_traj.set_radius(0.2, relative=False)
-    #   ps_traj.set_color((0.3, 0.6, 0.8))
-  
   def show(self):
     ps.set_give_focus_on_show(True)
     ps.init()
@@ -330,7 +318,7 @@ class ShrinkMorph:
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
     self.n_layers = round(self.thickness / self.printer.layer_height)
-    layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.nozzle_width, self.n_layers, 0)
+    layer = self.stripe.generate_first_layer(self.P, self.F, self.theta1 - 0.5 * self.theta2, self.printer.nozzle_width)
     nodes, edges = self.convert_trajectories(layer)
 
     layer_height = self.modified_layer_height(self.printer.layer_height, 0, 1, self.n_layers, self.gradient)
@@ -511,7 +499,8 @@ class ShrinkMorph:
   curr_layer = 1
   def callback_traj(self):
     if self.curr_layer < self.n_layers:
-      layer = self.stripe.generate_one_layer(self.P, self.F, self.theta1, self.theta2, self.printer.nozzle_width, self.n_layers, self.curr_layer)
+      theta = self.theta1 + (self.curr_layer / (self.n_layers - 1.) - 1 / 2.) * self.theta2
+      layer = self.stripe.generate_other_layer(self.P, self.F, theta, self.printer.nozzle_width)
       
       layer_height = self.modified_layer_height(self.printer.layer_height, self.curr_layer, 1, self.n_layers, self.gradient)
       self.curr_z += layer_height

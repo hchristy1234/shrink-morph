@@ -177,14 +177,12 @@ void writePaths(const std::string& filename, const std::vector<Eigen::MatrixXd>&
 }
 
 std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometry,
-                                                                    const Eigen::VectorXd& theta1,
-                                                                    const Eigen::VectorXd& theta2,
-                                                                    const Eigen::SparseMatrix<double> &massMatrix,
-                                                                    Eigen::VectorXd& u,
-                                                                    LDLTSolver &solver,
-                                                                    int i,
-                                                                    int nLayers,
-                                                                    double spacing)
+                                              const Eigen::VectorXd& theta,
+                                              const Eigen::SparseMatrix<double>& massMatrix,
+                                              Eigen::VectorXd& u,
+                                              LDLTSolver& solver,
+                                              bool patternAnalyzed,
+                                              double spacing)
 {
   geometry.requireVertexTangentBasis();
   SurfaceMesh& mesh = geometry.mesh;
@@ -195,7 +193,7 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
   for(size_t j = 0; j < mesh.nVertices(); ++j)
   {
     // interpolate orientations w.r.t layer
-    directionField[j] = Vector2::fromAngle(2 * (theta1(j) + (i / (nLayers - 1.) - 1 / 2.) * theta2(j)));
+    directionField[j] = Vector2::fromAngle(2 * theta(j));
     // express vectors in their respective vertex local bases (the stripes algorithm expects that)
     auto basisVector = geometry.vertexTangentBasis[j][0];
     Vector2 base{basisVector.x, basisVector.y};
@@ -206,10 +204,10 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
   FaceData<int> fieldIndices = computeFaceIndex(geometry, directionField, 2);
   SparseMatrix<double> energyMatrix =
       buildVertexEnergyMatrix(geometry, directionField, fieldIndices, 2 * PI * frequencies);
-  if(i == 0)
-    solver.compute(energyMatrix);
-  else
+  if(patternAnalyzed)
     solver.factorize(energyMatrix);
+  else
+    solver.compute(energyMatrix);
 
   // solve the eigenvalue problem
   Vector<double> x;
@@ -252,10 +250,10 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
 }
 
 std::vector<std::vector<Eigen::MatrixXd>> generatePaths(EmbeddedGeometryInterface& geometry,
-                                                                              const Eigen::VectorXd& theta1,
-                                                                              const Eigen::VectorXd& theta2,
-                                                                              int nLayers,
-                                                                              double spacing)
+                                                        const Eigen::VectorXd& theta1,
+                                                        const Eigen::VectorXd& theta2,
+                                                        int nLayers,
+                                                        double spacing)
 {
   std::vector<std::vector<Eigen::MatrixXd>> paths;
   SparseMatrix<double> massMatrix = computeRealVertexMassMatrix(geometry);
@@ -264,7 +262,8 @@ std::vector<std::vector<Eigen::MatrixXd>> generatePaths(EmbeddedGeometryInterfac
   for(int i = 0; i < nLayers; ++i)
   {
     Timer timer("Layer " + std::to_string(i));
-    paths.push_back(generateOneLayer(geometry, theta1, theta2, massMatrix, u, solver, i, nLayers, spacing));
+    Vector<double> theta = theta1 + (i / (nLayers - 1.) - 1 / 2.) * theta2;
+    paths.push_back(generateOneLayer(geometry, theta, massMatrix, u, solver, i != 0, spacing));
   }
   return paths;
 }
