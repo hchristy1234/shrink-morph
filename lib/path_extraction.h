@@ -13,7 +13,6 @@ std::vector<std::vector<Eigen::MatrixXd>>
 generatePaths(geometrycentral::surface::EmbeddedGeometryInterface& geometry,
               const Eigen::VectorXd& theta1,
               const Eigen::VectorXd& theta2,
-              double layerHeight,
               int nLayers,
               double spacing);
 
@@ -25,7 +24,6 @@ std::vector<Eigen::MatrixXd> generateOneLayer(geometrycentral::surface::Embedded
                                                                     LDLTSolver& solver,
                                                                     int i,
                                                                     int nLayers,
-                                                                    double layerHeight,
                                                                     double spacing);
 
 void writePaths(const std::string& filename,

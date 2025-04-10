@@ -59,7 +59,7 @@ void generateTrajectories(VertexPositionGeometry& geometry,
     th2 = mat * th2;
 
   std::vector<std::vector<Eigen::MatrixXd>> paths =
-      generatePaths(geometryUV, th1, th2, layerHeight, nLayers, spacing);
+      generatePaths(geometryUV, th1, th2, nLayers, spacing);
 
   // geometryUV.requireDECOperators();
   // SparseMatrix<double> A = geometryUV.d0.transpose() * geometryUV.hodge1 * geometryUV.d0;

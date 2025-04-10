@@ -246,7 +246,6 @@ struct StripeAlgo
                                                   const nb::DRef<Eigen::MatrixXi>& F,
                                                   const nb::DRef<Eigen::VectorXd>& theta1,
                                                   const nb::DRef<Eigen::VectorXd>& theta2,
-                                                  double layerHeight,
                                                   double spacing,
                                                   int nLayers,
                                                   int i)
@@ -261,7 +260,7 @@ struct StripeAlgo
     P_3D.col(2).setZero();
     VertexPositionGeometry geometryUV(mesh, P_3D);
 
-    return generateOneLayer(geometryUV, theta1, theta2, massMatrix, u, solver, i, nLayers, layerHeight, spacing);
+    return generateOneLayer(geometryUV, theta1, theta2, massMatrix, u, solver, i, nLayers, spacing);
   }
 };
 

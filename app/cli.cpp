@@ -184,7 +184,7 @@ int main(int argc, char* argv[])
     th2 = mat * th2;
 
   std::vector<std::vector<Eigen::MatrixXd>> paths =
-      generatePaths(geometryUV, th1, th2, layerHeight, nLayers, spacing);
+      generatePaths(geometryUV, th1, th2, nLayers, spacing);
 
   for(int i = 0; i < nLayers; ++i)
     writePaths(filename + ".path", paths[i], (i + 1) * layerHeight);

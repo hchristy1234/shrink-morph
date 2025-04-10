@@ -184,7 +184,6 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
                                                                     LDLTSolver &solver,
                                                                     int i,
                                                                     int nLayers,
-                                                                    double layerHeight,
                                                                     double spacing)
 {
   geometry.requireVertexTangentBasis();
@@ -255,7 +254,6 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
 std::vector<std::vector<Eigen::MatrixXd>> generatePaths(EmbeddedGeometryInterface& geometry,
                                                                               const Eigen::VectorXd& theta1,
                                                                               const Eigen::VectorXd& theta2,
-                                                                              double layerHeight,
                                                                               int nLayers,
                                                                               double spacing)
 {
@@ -266,7 +264,7 @@ std::vector<std::vector<Eigen::MatrixXd>> generatePaths(EmbeddedGeometryInterfac
   for(int i = 0; i < nLayers; ++i)
   {
     Timer timer("Layer " + std::to_string(i));
-    paths.push_back(generateOneLayer(geometry, theta1, theta2, massMatrix, u, solver, i, nLayers, layerHeight, spacing));
+    paths.push_back(generateOneLayer(geometry, theta1, theta2, massMatrix, u, solver, i, nLayers, spacing));
   }
   return paths;
 }
