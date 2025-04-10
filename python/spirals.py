@@ -83,7 +83,7 @@ def callback():
   _, printer.layer_height = gui.InputDouble("Layer height", printer.layer_height, format="%.2f")
   _, printer.bed_temp = gui.InputDouble("Bed temperature (ºC)", printer.bed_temp, format="%.0f")
   _, printer.extruder_temp = gui.InputDouble("Nozzle temperature (ºC)", printer.extruder_temp, format="%.0f")
-  _, printer.filament_priming = gui.InputDouble("Retract length (mm)", printer.filament_priming, format="%.0f")
+  _, printer.filament_priming = gui.InputDouble("Retract length (mm)", printer.filament_priming, format="%.1f")
   gui.PushItemWidth(110)
   _, printer.nloops = gui.InputInt("Number of loops around object", printer.nloops, step=1)
   gui.PopItemWidth()

@@ -331,10 +331,10 @@ class ShrinkMorph:
     self.layer_nodes = [nodes]
     self.layer_edges = [edges]
     ps.remove_all_structures()
+    self.display_buildplate()
     self.display_trajectories(self.layer_nodes, self.layer_edges)
   
     ps.set_user_callback(self.callback_traj)
-    ps.reset_camera_to_home_view()
     ps.show()
 
   spacing = 6
@@ -364,7 +364,6 @@ class ShrinkMorph:
     self.display_rectangles()
 
     ps.set_user_callback(self.callback_calibrate)
-    ps.reset_camera_to_home_view()
     ps.show()
 
   delta = 0.005
@@ -427,12 +426,8 @@ class ShrinkMorph:
         self.lambda3 = 1 / self.lambda1
         self.gradient = (self.flattest_print - 1 - (self.num_rectangles - 1) / 2.) * self.delta
         
-        self.leave = False
-        ps.reset_camera_to_home_view()
-        ps.remove_all_structures()
-        ps.unshow()
-
       self.leave = False
+      ps.remove_all_structures()
       ps.unshow()
 
     # if gui.Button("Back"):
@@ -488,7 +483,6 @@ class ShrinkMorph:
     return nodes, edges
 
   def display_trajectories(self, nodes, edges):
-    self.display_buildplate()
     for k in range(len(nodes)):
       ps_traj = ps.register_curve_network("Layer " + str(k + 1), nodes[k], edges[k], enabled=True, radius=self.printer.nozzle_width / 2)
       ps_traj.set_radius(self.printer.nozzle_width / 2, relative=False)
