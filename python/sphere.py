@@ -113,17 +113,13 @@ def callback():
 
   if gui.Button("Generate spiral pattern"):
     # project to disk
-    P[:,1] /= eccentricity
-    theta = np.arctan2(P[:, 1], P[:, 0])
+    theta = np.arctan2(P[:, 1] / eccentricity, P[:, 0])
     theta += director_angle(np.linalg.norm(P, axis=1), K, lambda1, lambda2)
+    theta = np.arctan2(eccentricity * np.sin(theta), np.cos(theta))
 
     stripe = shrink_morph_py.StripeAlgo(P[:, :2], F)
     layer = stripe.generate_first_layer(P[:, :2], F, theta, printer.nozzle_width)
     nodes, edges = convert_trajectories(layer)
-
-    # rescale
-    P[:,1] *= eccentricity
-    nodes[:,1] *= eccentricity
 
     display_trajectories(nodes, edges)
 
@@ -132,8 +128,6 @@ def callback():
     for i in range(n_layers):
       curr_layer = []
       for j in range(len(layer)):
-        # rescale
-        layer[j][:,1] *= eccentricity
 
         # rotate wrt previous layer
         s = 2 * printer.nozzle_width / outer_radius
