@@ -243,7 +243,7 @@ std::vector<Eigen::MatrixXd> generateOneLayer(EmbeddedGeometryInterface& geometr
 
   // extract isolines
   const auto& [points, edges] =
-      extractPolylinesFromStripePattern(geometry, stripeValues, stripeIndices, fieldIndices, directionField);
+      extractPolylinesFromStripePattern(geometry, stripeValues, stripeIndices, fieldIndices, directionField, true);
   auto polylines = edgeToPolyline(points, edges);
   polylines = orderPolylines(polylines);
   return simplifyPolylines(polylines);
