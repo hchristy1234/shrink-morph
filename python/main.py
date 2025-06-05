@@ -13,14 +13,14 @@ root = tk.Tk()
 root.withdraw()
 
 class ShrinkMorph:
-  lambda1 = 0.6912916667
-  lambda2 = 1.055333333
+  lambda1 = 0.94
+  lambda2 = 1
   lambda3 = 1 / lambda1
   gradient = 0
   wD = 2e-5
   E1 = 10
   # deltaLambda = 0.0226764665509417
-  n_layers = 8
+  n_layers = 4
   lim = 1e-6
   n_iter = 1000
   width = 200
@@ -257,6 +257,7 @@ class ShrinkMorph:
   resolution = resolutions[0]
 
   optim_running = False
+  optim_iter = 0
 
   def callback_optim(self):
     gui.PushItemWidth(100)
@@ -268,16 +269,17 @@ class ShrinkMorph:
       self.targetV *= scale
       ps.get_surface_mesh("Input mesh").update_vertex_positions(self.targetV)
 
-    # if gui.Button("Simulation"):
-    #   shrink_morph_py.simulation(self.V, self.P, self.F, self.theta2, self.E1, self.lambda1, self.lambda2, self.deltaLambda, self.thickness_sim, self.width, self.n_iter, self.lim)
-    #   ps.get_surface_mesh("Input mesh").set_transparency(0.5)
-    #   ps.register_surface_mesh("Simulation", self.V, self.F)
+    if gui.Button("Simulation"):
+      shrink_morph_py.simulation(self.V, self.P, self.F, self.angles, self.E1, self.lambda1, self.lambda2, self.thickness, self.n_iter, self.lim)
+      ps.get_surface_mesh("Input mesh").set_transparency(0.5)
+      ps.register_surface_mesh("Simulation", self.V, self.F)
 
     if self.optim_running == True:
       _, self.theta2 = self.optim_solver.solve_one_step()
       ps.get_surface_mesh("Optimized mesh").update_vertex_positions(self.optim_solver.optimizedV())
+      self.optim_iter += 1
 
-      if self.optim_solver.decrement() < 1e-6:
+      if self.optim_solver.decrement() < 1e-6 or self.optim_iter > 50:
         self.optim_running = False
         ps.get_surface_mesh("Optimized mesh").add_scalar_quantity("theta2", self.theta2)
         ps.get_surface_mesh("Optimized mesh").add_scalar_quantity("theta1", self.angles, defined_on='faces', vminmax=(-np.pi/2, np.pi/2), cmap='twilight')
@@ -318,7 +320,7 @@ class ShrinkMorph:
     self.theta1 = shrink_morph_py.vertex_based_stretch_angles(self.V, self.P, self.F)
     self.stripe = shrink_morph_py.StripeAlgo(self.P, self.F)
     self.n_layers = round(self.thickness / self.printer.layer_height)
-    layer = self.stripe.generate_first_layer(self.P, self.F, self.theta1 - 0.5 * self.theta2, self.printer.nozzle_width)
+    layer = self.stripe.generate_first_layer(self.P, self.F, self.theta1 - 0.5 * self.theta2 + np.pi / 2, self.printer.nozzle_width)
     nodes, edges = self.convert_trajectories(layer)
 
     layer_height = self.modified_layer_height(self.printer.layer_height, 0, 1, self.n_layers, self.gradient)
@@ -493,7 +495,7 @@ class ShrinkMorph:
   curr_layer = 1
   def callback_traj(self):
     if self.curr_layer < self.n_layers:
-      theta = self.theta1 + (self.curr_layer / (self.n_layers - 1.) - 1 / 2.) * self.theta2
+      theta = self.theta1 + (self.curr_layer / (self.n_layers - 1.) - 1 / 2.) * self.theta2 + np.pi / 2
       layer = self.stripe.generate_other_layer(self.P, self.F, theta, self.printer.nozzle_width)
       
       layer_height = self.modified_layer_height(self.printer.layer_height, self.curr_layer, 1, self.n_layers, self.gradient)

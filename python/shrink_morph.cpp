@@ -114,14 +114,8 @@ void simulation(nb::DRef<Eigen::MatrixXd> V,
   std::vector<int> fixedIdx = findCenterFaceIndices(P, F);
 
   FaceData<Eigen::Matrix2d> MrInv = precomputeSimData(mesh, P, F);
-  FaceData<double> theta1(mesh, 0);
+  FaceData<double> theta1(mesh, theta);
   VertexData<double> theta2(mesh, 0);
-
-  for(int i = 0; i < F.rows(); ++i)
-  {
-    for(int j = 0; j < 3; ++j)
-      theta1[i] += theta(F(i, j)) / 3;
-  }
 
   // Define simulation function
   auto func = simulationFunction(mesh, MrInv, theta1, theta2, E1, lambda1, lambda2, 0, thickness);
