@@ -8,6 +8,8 @@ from tkinter import filedialog
 import os
 import sys
 import threading
+import svgwrite
+import igl
 
 root = tk.Tk()
 root.withdraw()
@@ -174,6 +176,36 @@ class ShrinkMorph:
     if self.file_not_select_error:
       gui.TextColored((1.0, 0.2, 0.2, 1.0), 
                 "(ERROR) No file selected. Please select a file before proceeding.")
+
+    if gui.Button("Boundary to SVG"):
+      E = igl.boundary_loop(self.F)
+      boundary_verts = []
+      for k in E:
+        boundary_verts.append(self.P[k, :])
+      
+      # filename = filedialog.asksaveasfilename(defaultextension='.svg')
+      filename = "beetle.svg"
+      dwg = svgwrite.Drawing(filename, profile='tiny')
+
+      # Build the path string
+      path_data = [f"M {self.P[E[0],0]},{self.P[E[0],1]}"]  # Move to start
+      path_data += [f"L {self.P[e,0]},{self.P[e,1]}" for e in E]  # Line to each point
+      path_data.append("Z")  # Close the path
+
+      # Create the path element
+      path = dwg.path(d=" ".join(path_data), stroke="black", fill="none", stroke_width=1)
+
+      # Add path to SVG
+      dwg.add(path)
+      dwg.save()
+
+    if gui.Button("Angles to PNG"):
+      ps.remove_all_structures()
+      ps.set_up_dir("y_up")
+      ps.set_front_dir("z_front")
+      ps_mesh = ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='gray')
+      ps.screenshot()
 
     if gui.Button("Next"):
       if not self.file_selected:
