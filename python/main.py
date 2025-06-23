@@ -16,7 +16,7 @@ root.withdraw()
 
 class ShrinkMorph:
   lambda1 = 0.94
-  lambda2 = 1
+  lambda2 = 0.99
   lambda3 = 1 / lambda1
   gradient = 0
   wD = 2e-5
@@ -204,7 +204,8 @@ class ShrinkMorph:
       ps.set_up_dir("y_up")
       ps.set_front_dir("z_front")
       ps_mesh = ps.register_surface_mesh("Parameterization", self.P, self.F, material="flat")
-      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", self.angles, defined_on='faces', enabled=True, vminmax=(-np.pi/2, np.pi/2), cmap='gray')
+      ps.get_surface_mesh("Parameterization").add_scalar_quantity("stretch orientation", np.mod(self.angles, np.pi), defined_on='faces', enabled=False, vminmax=(0, np.pi), cmap='gray')
+      ps.get_surface_mesh("Parameterization").add_color_quantity("color", np.mod(np.ones((self.angles.shape[0], 3)) * (self.angles).reshape(-1, 1), np.pi) / np.pi, defined_on='faces')
       ps.screenshot()
 
     if gui.Button("Next"):

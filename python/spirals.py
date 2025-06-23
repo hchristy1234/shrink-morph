@@ -36,8 +36,10 @@ printer_profile = "Prusa_MK3S"
 printer = togcode.Printer(printer_profile)
 printer.layer_height = 0.2
 
-lambda1 = 1
-lambda2 = 0.92
+lambda1 = 0.99
+lambda2 = 0.94
+lambdawet1 = 1
+lambdawet2 = 1.05
 outer_radius = 30
 eccentricity = 1
 inner_radius = 1
@@ -127,7 +129,7 @@ def callback():
         curr_layer.append(np.column_stack((layer[j], (i + 1) * printer.layer_height * np.ones(layer[j].shape[0]))))
       trajectories.append({"height": printer.layer_height, "paths": curr_layer})
 
-  if gui.Button("Simulate"):
+  if gui.Button("Simulate (dry)"):
     vertices = []
     segments = []
 
@@ -143,10 +145,41 @@ def callback():
     V = P.copy()
     V[:,2] = 1e-3 * np.random.rand(V.shape[0])
 
-    theta = np.arctan2(P[:, 1] / eccentricity, P[:, 0])
-    theta += np.radians(angle)
+    face_centers = (P[F[:, 0], :] + P[F[:, 1], :] + P[F[:, 2], :]) / 3
+    for i in range(10):
+      theta = np.arctan2(face_centers[:, 1] / eccentricity, face_centers[:, 0])
+      theta += np.radians(angle)
 
-    shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
+      shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
+    ps.get_surface_mesh("Parameterization").set_enabled(False)
+    ps.register_surface_mesh("Simulation", V, F, edge_width=1, color=(42/255, 53/255, 213/255))
+
+    ps.set_up_dir("z_up")
+    ps.set_front_dir("y_front")
+
+  if gui.Button("Simulate (wet)"):
+    vertices = []
+    segments = []
+
+    make_circle(outer_radius, 1)
+
+    A = dict(vertices=vertices, segments=segments)
+    B = tr.triangulate(A, 'pqa1')
+
+    zeros = np.zeros((len(B['vertices']), 1))
+    P = np.hstack((np.array(B['vertices']), zeros))
+    F = np.array(B['triangles'])
+
+    V = P.copy()
+    V[:,2] = 1e-3 * np.random.rand(V.shape[0])
+
+
+    face_centers = (P[F[:, 0], :] + P[F[:, 1], :] + P[F[:, 2], :]) / 3
+    for i in range(10):
+      theta = np.arctan2(face_centers[:, 1] / eccentricity, face_centers[:, 0])
+      theta += np.radians(angle)
+
+      shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambdawet1, lambdawet2, thickness, 1000, 1e-6)
 
     ps.get_surface_mesh("Parameterization").set_enabled(False)
     ps.register_surface_mesh("Simulation", V, F, edge_width=1, color=(42/255, 53/255, 213/255))

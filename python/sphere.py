@@ -40,12 +40,14 @@ printer_profile = "Prusa_MK3S"
 printer = togcode.Printer(printer_profile)
 printer.layer_height = 0.2
 
-lambda1 = 1
-lambda2 = 0.92
+lambda1 = 0.99
+lambda2 = 0.94
+lambdawet1 = 1
+lambdawet2 = 1.05
 outer_radius = 30
 eccentricity = 1
 inner_radius = 1
-thickness = 0.4
+thickness = 0.6
 angle = 45
 
 vertices = []
@@ -60,9 +62,9 @@ def make_circle(radius, factor):
     segments.append([n + i, n + ((i + 1) % n_circle)])
 
 make_circle(outer_radius, 3)
-make_circle(inner_radius, 3) 
+# make_circle(inner_radius, 3) 
 
-A = dict(vertices=vertices, segments=segments, holes=holes)
+A = dict(vertices=vertices, segments=segments)
 B = tr.triangulate(A, 'pqa0.1')
 
 # Initialize polyscope
@@ -80,7 +82,7 @@ K_min = -4 * lambda1 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2)
 K_max = 4 * lambda2 / (lambda1 + lambda2) * (1 / lambda2**2 - 1 / lambda1 ** 2) / outer_radius**2 - 1e-6
 K = K_max
 def callback():
-  global thickness, outer_radius, eccentricity, angle, lambda2, P, trajectories, printer, vertices, segments, F, K, K_min, K_max
+  global thickness, outer_radius, eccentricity, angle, lambda1, lambda2, lambdawet1, lambdawet2, P, trajectories, printer, vertices, segments, F, K, K_min, K_max
 
   gui.PushItemWidth(70)
   _, printer.nozzle_width = gui.InputDouble("Nozzle width (mm)", printer.nozzle_width, format="%.2f")    
@@ -95,7 +97,10 @@ def callback():
   _, printer.nloops = gui.InputInt("Number of loops around object", printer.nloops, step=1)
   gui.PopItemWidth()
   _, printer.flow_multiplier = gui.InputDouble("Flow multiplier", printer.flow_multiplier, format="%.2f")
-  _, lambda2 = gui.InputDouble("Shrinking ratio", lambda2, format="%.2f")
+  _, lambda1 = gui.InputDouble("Lambda1 (dry)", lambda1, format="%.2f")
+  _, lambda2 = gui.InputDouble("Lambda2 (dry)", lambda2, format="%.2f")
+  _, lambdawet1 = gui.InputDouble("Lambda1 (wet)", lambdawet1, format="%.2f")
+  _, lambdawet2 = gui.InputDouble("Lambda2 (wet)", lambdawet2, format="%.2f")
   changed, outer_radius = gui.DragFloat("Outer radius (mm)", outer_radius, 1, 1, 100, "%.0f")
   if changed and outer_radius > 0:
     P *= 2 * outer_radius / (np.max(P) - np.min(P))
@@ -139,7 +144,7 @@ def callback():
         curr_layer.append(np.column_stack((layer[j], (i + 1) * printer.layer_height * np.ones(layer[j].shape[0]))))
       trajectories.append({"height": printer.layer_height, "paths": curr_layer})
 
-  if gui.Button("Simulate"):
+  if gui.Button("Simulate (dry)"):
     vertices = []
     segments = []
 
@@ -155,11 +160,43 @@ def callback():
     V = P.copy()
     V[:,2] = 1e-3 * np.random.rand(V.shape[0])
 
-    theta = np.arctan2(P[:, 1] / eccentricity, P[:, 0])
-    theta += director_angle(np.linalg.norm(P, axis=1), K, lambda1, lambda2)
+    face_centers = (P[F[:, 0], :] + P[F[:, 1], :] + P[F[:, 2], :]) / 3
+    for i in range(10):
+      k = (i + 1) / 10 * K
+      theta = np.arctan2(face_centers[:, 1] / eccentricity, face_centers[:, 0])
+      theta += director_angle(np.linalg.norm(face_centers, axis=1), k, lambda1, lambda2)
 
-    shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
+      shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambda1, lambda2, thickness, 1000, 1e-6)
+    ps.set_up_dir("z_up")
+    ps.set_front_dir("y_front")
+    ps.get_surface_mesh("Parameterization").set_enabled(False)
+    ps.register_surface_mesh("Simulation", V, F, edge_width=1, color=(42/255, 53/255, 213/255))
 
+  if gui.Button("Simulate (wet)"):
+    vertices = []
+    segments = []
+
+    make_circle(outer_radius, 1)
+
+    A = dict(vertices=vertices, segments=segments)
+    B = tr.triangulate(A, 'pqa1')
+
+    zeros = np.zeros((len(B['vertices']), 1))
+    P = np.hstack((np.array(B['vertices']), zeros))
+    F = np.array(B['triangles'])
+
+    V = P.copy()
+    V[:,2] = 1e-3 * np.random.rand(V.shape[0])
+
+    face_centers = (P[F[:, 0], :] + P[F[:, 1], :] + P[F[:, 2], :]) / 3
+    for i in range(10):
+      k = (i + 1) / 10 * K
+      theta = np.arctan2(face_centers[:, 1] / eccentricity, face_centers[:, 0])
+      theta += director_angle(np.linalg.norm(face_centers, axis=1), k, lambda1, lambda2)
+
+      shrink_morph_py.simulation(V, P[:,:2], F, theta, 10, lambdawet1, lambdawet2, thickness, 1000, 1e-6)
+    ps.set_up_dir("z_up")
+    ps.set_front_dir("y_front")
     ps.get_surface_mesh("Parameterization").set_enabled(False)
     ps.register_surface_mesh("Simulation", V, F, edge_width=1, color=(42/255, 53/255, 213/255))
 
