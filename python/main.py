@@ -78,6 +78,7 @@ class ShrinkMorph:
   in_calibration_loop = False
   file_selected = False
   file_not_select_error = False
+  gizmo = None
 
   # Display printer buildplate
   def display_buildplate(self):
@@ -117,6 +118,12 @@ class ShrinkMorph:
         ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma1", sigma1, defined_on='faces')
         ps.get_surface_mesh("Parameterization").add_scalar_quantity("sigma2", sigma2, defined_on='faces')
 
+        self.gizmo = ps.add_transformation_gizmo("Param gizmo")
+        self.gizmo.set_allow_translation(True)
+        self.gizmo.set_allow_rotation(True)
+        self.gizmo.set_allow_scaling(True)
+        self.gizmo.set_interact_in_local_space(False)
+
         self.file_selected = True
         self.file_not_select_error = False
 
@@ -152,6 +159,20 @@ class ShrinkMorph:
         self.V *= scale
         ps.get_surface_mesh("Parameterization").update_vertex_positions(self.P)
 
+      p = self.gizmo.get_position()
+      T = np.linalg.inv(self.gizmo.get_transform())
+
+      if np.linalg.norm(T - np.eye(4)) > 1e-10:
+        # self.P += np.ones_like(self.P) @ p[:2]
+        P = self.P @ T[:2,:2]
+        P[:,0] += np.ones(P.shape[0]) * p[0]
+        P[:,1] += np.ones(P.shape[0]) * p[1]
+
+        # self.V += np.ones_like(self.P) @ p
+        ps.get_surface_mesh("Parameterization").update_vertex_positions(P)
+
+
+
       if gui.Button("Increase mesh resolution"):
         self.V, self.P, self.F, _ = shrink_morph_py.subdivide(self.V, self.P, self.F, np.array([]))
         self.P = shrink_morph_py.reparameterization(self.V, self.P, self.F, self.lambda1, self.lambda2, self.wD if self.with_smoothing else 0, self.n_iter, self.lim)
@@ -181,6 +202,13 @@ class ShrinkMorph:
       else:
         self.leave = False
         self.in_calibration_loop = False
+
+        self.P = self.P @ T[:2,:2]
+        self.P[:,0] += np.ones(self.P.shape[0]) * p[0]
+        self.P[:,1] += np.ones(self.P.shape[0]) * p[1]
+
+        self.V= self.V @ T[:3,:3]
+        self.gizmo.remove()
         ps.unshow()
       return
 
