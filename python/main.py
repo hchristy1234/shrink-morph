@@ -13,10 +13,10 @@ root = tk.Tk()
 root.withdraw()
 
 class ShrinkMorph:
-  lambda1 = 0.6912916667
-  lambda2 = 1.055333333
+  lambda1 = 0.82
+  lambda2 = 0.97
   lambda3 = 1 / lambda1
-  gradient = 0
+  gradient = -0.005
   wD = 2e-5
   E1 = 10
   # deltaLambda = 0.0226764665509417
@@ -131,7 +131,7 @@ class ShrinkMorph:
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
     if changed:
       for val in self.printers_list:
-        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
+        selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
@@ -323,7 +323,7 @@ class ShrinkMorph:
     changed = gui.BeginCombo("Trajectory resolution", self.resolution)
     if changed:
       for val in self.resolutions:
-        _, selected = gui.Selectable(val, self.resolution==val)
+        selected = gui.Selectable(val, self.resolution==val)
         if selected:
           self.resolution = val
       gui.EndCombo()
@@ -406,7 +406,7 @@ class ShrinkMorph:
     changed = gui.BeginCombo("Select printer", self.printer_profile.replace('_', ' '))
     if changed:
       for val in self.printers_list:
-        _, selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
+        selected = gui.Selectable(val.replace('_', ' '), self.printer_profile==val)
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
@@ -541,7 +541,7 @@ class ShrinkMorph:
     changed = gui.BeginCombo("Select printer", self.printer_profile)
     if changed:
       for val in self.printers_list:
-        _, selected = gui.Selectable(val, self.printer_profile==val)
+        selected = gui.Selectable(val, self.printer_profile==val)
         if selected:
           self.printer_profile = val
           self.printer = togcode.Printer(self.printer_profile)
